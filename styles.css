@@ -427,3 +427,72 @@ body{background:linear-gradient(180deg,#edf4f7 0,#f5f7fa 340px)!important}
 @media(prefers-reduced-motion:reduce){
  .aic-main button,.aic-sidebar button{transition:none!important}
 }
+
+
+/* ==========================================================
+   AULA360 · Relieve 3D universal (acceso, estudiante y paneles)
+   Se aplica también fuera de .aic-main. Respeta controles con
+   fondo inline y botones de icono/usuario.
+   ========================================================== */
+#app button:not(:disabled):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb):not([style*="background"]):not([style*="background-color"]),
+#app [role="button"]:not([style*="background"]):not([style*="background-color"]){
+  position:relative;
+  border-radius:13px!important;
+  border:1px solid #d2dfeb!important;
+  border-bottom:4px solid #b3c5d5!important;
+  background:linear-gradient(180deg,#fff 0%,#edf3f8 100%)!important;
+  color:#24435f!important;
+  font-weight:750;
+  text-shadow:0 1px 0 rgba(255,255,255,.85);
+  box-shadow:inset 0 1px 0 #fff,0 4px 0 rgba(17,49,77,.07),0 8px 16px rgba(17,49,77,.10)!important;
+  transform:translateY(0);
+  transition:transform .16s ease,box-shadow .16s ease,filter .16s ease!important;
+}
+#app button[class*="bg-indigo-"],#app button[class*="bg-blue-"],
+#app button[class*="bg-sky-"],#app button[class*="bg-cyan-"]{
+  background:linear-gradient(180deg,#559bc6 0%,#2674a4 52%,#17547e 100%)!important;
+  color:#fff!important;border:1px solid #1a5b83!important;border-bottom:4px solid #103c5c!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 4px 0 #103c5c,0 9px 18px rgba(15,70,105,.23)!important;
+  text-shadow:0 1px 1px rgba(0,0,0,.2);
+}
+#app button[class*="bg-emerald-"],#app button[class*="bg-green-"],#app button[class*="bg-teal-"]{
+  background:linear-gradient(180deg,#55d5b6 0%,#19a88f 52%,#08776b 100%)!important;
+  color:#fff!important;border:1px solid #08796d!important;border-bottom:4px solid #07574f!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 4px 0 #07574f,0 9px 18px rgba(9,117,107,.22)!important;
+}
+#app button[class*="bg-amber-"],#app button[class*="bg-yellow-"],#app button[class*="bg-orange-"]{
+  background:linear-gradient(180deg,#ffe6a4 0%,#f4c45e 52%,#d99a32 100%)!important;
+  color:#493314!important;border:1px solid #e0ae4b!important;border-bottom:4px solid #a96e20!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 4px 0 #a96e20,0 9px 18px rgba(137,91,26,.19)!important;
+}
+#app button[class*="bg-violet-"],#app button[class*="bg-purple-"],#app button[class*="bg-fuchsia-"]{
+  background:linear-gradient(180deg,#b69af7 0%,#8964d9 52%,#6745b5 100%)!important;
+  color:#fff!important;border:1px solid #7753c1!important;border-bottom:4px solid #4d328e!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 4px 0 #4d328e,0 9px 18px rgba(91,61,157,.22)!important;
+}
+#app button[class*="bg-rose-"],#app button[class*="bg-red-"],#app button[class*="bg-pink-"]{
+  background:linear-gradient(180deg,#ff9aab 0%,#e85c79 52%,#bd3657 100%)!important;
+  color:#fff!important;border:1px solid #c84a66!important;border-bottom:4px solid #8f2944!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 4px 0 #8f2944,0 9px 18px rgba(151,42,69,.2)!important;
+}
+#app button:hover:not(:disabled):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb),
+#app [role="button"]:hover{
+  transform:translateY(-2px);
+  filter:brightness(1.035);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 0 rgba(17,49,77,.09),0 13px 22px rgba(17,49,77,.16)!important;
+}
+#app button:active:not(:disabled):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb),
+#app [role="button"]:active{
+  transform:translateY(2px);
+  border-bottom-width:1px!important;
+  box-shadow:inset 0 2px 5px rgba(8,29,47,.22),0 1px 2px rgba(17,49,77,.12)!important;
+}
+#app button:disabled{filter:grayscale(.2);opacity:.55;box-shadow:none!important}
+#app>.max-w-md button{min-height:46px}
+#app>.max-w-md button:first-child{border-radius:12px!important}
+@media(max-width:760px){
+  #app button:not(.aic-icon-btn):not(.aic-user):not(.aic-hamb){min-height:42px}
+}
+@media(prefers-reduced-motion:reduce){
+  #app button,#app [role="button"]{transition:none!important}
+}
