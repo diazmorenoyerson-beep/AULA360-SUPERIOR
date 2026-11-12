@@ -221,7 +221,7 @@ async function doReg(){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))return toast('⚠️','Correo no válido','Revisa tu correo electrónico.');
   if(pw.length<6)return toast('⚠️','Contraseña muy corta','Usa mínimo 6 caracteres.');
   if(!RG.dep||!RG.mun||!RG.col)return toast('⚠️','Falta el colegio','Elige tu departamento, tu municipio y tu colegio de la lista.');
-  const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{data:{account:rol,full_name:nm,phone:tel,colegio_id:String(RG.col)}}});
+  const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{emailRedirectTo:window.location.origin+'/',data:{account:rol,full_name:nm,phone:tel,colegio_id:String(RG.col)}}});
   if(error)return err(error);
   RG=RG0();D.muns=[];D.cols=[];
   if(!data.session){authMode='login';render();return toast('📧','Revisa tu correo','Confirma tu cuenta y luego inicia sesión. Después tu cuenta debe ser aprobada.')}
