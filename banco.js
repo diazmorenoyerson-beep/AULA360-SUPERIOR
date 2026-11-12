@@ -103,6 +103,10 @@ async function subirItem(i){
     doc=ok(await sb.from('banco_documentos').insert({materia,nombre:P.nombre.slice(0,200),archivo_fuente:P.archivo_fuente||null,formato:P.formato,huella:P.huella,total_paginas:P.paginas.length,
       referentes:P.referentes||{},notas:P.notas.concat(P.avisos),subido_por:M.id,componente_saber11:it.componente||null}).select().single());
   }
+  // Mantener la clasificación del paquete incluso si el documento ya existía.
+  if(it.componente&&doc.componente_saber11!==it.componente){
+    doc=ok(await sb.from('banco_documentos').update({componente_saber11:it.componente}).eq('id',doc.id).select().single());
+  }
   // 2) PDF original
   if(P.pdf&&!doc.pdf_path){
     prog('Subiendo el PDF original…',4);
