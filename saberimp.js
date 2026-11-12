@@ -171,15 +171,18 @@ function evalIt(it){
 function calAssign(i,id){Z.cal.items[i].st=Z.est.find(s=>s.id===id)||null;R()}
 async function calSave(){
   const C=Z.cal,cu=C.cuad,expected='ABC'[cu-1],m=new Map(),invalid=[],duplicates=[];
+  if(C.busy)return toast('⏳','Lectura en curso','Espera a que termine el procesamiento de todas las hojas.');
+  if(!C.items.length)return toast('⚠️','Sin hojas','Primero carga y procesa las hojas.');
   for(const it of C.items){
-    if(it.status!=='ok'||!it.st)continue;
+    if(it.status!=='ok'){invalid.push(it.name+': '+(it.err||'no se pudo procesar'));continue}
+    if(!it.st){invalid.push(it.name+': no se identificó un estudiante');continue}
     const docRead=norm(it.read&&it.read.doc),docRoster=norm(it.st.document);
     if(!it.read||it.read.ver!==expected){invalid.push(it.name+': versión no confirmada o distinta');continue}
     if(!docRead||!docRoster||docRead!==docRoster){invalid.push(it.name+': documento leído no coincide con el estudiante asignado');continue}
     if(m.has(it.st.id)){duplicates.push(it.st.full_name);continue}
     m.set(it.st.id,{roster_id:it.st.id,cuad:cu,answers:evalIt(it).ans});
   }
-  if(invalid.length)return toast('⚠️','Hay hojas por corregir',invalid.slice(0,3).join('; ')+(invalid.length>3?' y '+(invalid.length-3)+' más.':'. No se guardó ninguna hoja.'));
+  if(invalid.length)return toast('⚠️','Carga incompleta',invalid.slice(0,3).join('; ')+(invalid.length>3?' y '+(invalid.length-3)+' más.':'. No se guardó ninguna hoja. Corrige o retira las hojas indicadas y vuelve a procesar.'));
   if(duplicates.length)return toast('⚠️','Hojas duplicadas','Hay más de una hoja del mismo estudiante y cuadernillo en esta carga. Retira los duplicados antes de guardar.');
   if(!m.size)return toast('⚠️','Nada que guardar','No hay hojas con estudiante, documento y versión verificados.');
   const r=await sb.rpc('saber_imp_guardar',{p_imp:Z.sel,p_rows:[...m.values()]});
