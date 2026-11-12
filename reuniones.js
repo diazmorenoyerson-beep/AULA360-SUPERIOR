@@ -29,7 +29,26 @@ const api={load,view,get f(){return Z.f},
     if(!/^https:\/\//i.test(f.u.trim()))return toast('⚠️','Enlace no válido','Debe empezar con https://');
     const r=await sb.from('reuniones').insert({colegio_id:M.colegio_id,titulo:f.t.trim(),url:f.u.trim(),en_vivo:false});
     if(r.error)return err(r.error);Z.f={t:'',u:'',v:true};toast('✅','Reunión guardada','Pulsa Iniciar cuando empiece.');await load();render()},
-  async vivo(id,v){const r=await sb.from('reuniones').update({en_vivo:v,updated_at:new Date().toISOString()}).eq('id',id);if(r.error)return err(r.error);toast(v?'🟢':'⏹',v?'Reunión iniciada':'Reunión terminada','');await load();render()},
+  async vivo(id,v){
+    const x=Z.l.find(y=>y.id===id);if(!x)return;
+    const r=await sb.from('reuniones').update({en_vivo:v,updated_at:new Date().toISOString()}).eq('id',id);
+    if(r.error)return err(r.error);
+    let aviso='';
+    if(v){
+      try{
+        const d=await sb.rpc('directorio_colegio');if(d.error)throw d.error;
+        const docentes=(d.data||[]).filter(p=>p.role==='prof');
+        const rs=await Promise.allSettled(docentes.map(p=>sb.rpc('mensaje_enviar',{
+          p_para:p.id,p_tipo:'mensaje',p_asunto:'Reunión en vivo: '+x.titulo,
+          p_texto:'El colegio ha iniciado una reunión virtual. Puedes ingresar desde AULA360.\\n\\n'+x.titulo+'\\n'+x.url
+        })));
+        const enviados=rs.filter(z=>z.status==='fulfilled'&&!z.value.error).length;
+        aviso=enviados+' de '+docentes.length+' docentes notificados por Mensajes.';
+      }catch(e){aviso='La reunión está activa, pero no se pudieron enviar todas las notificaciones.'}
+    }
+    toast(v?'🟢':'⏹',v?'Reunión iniciada':'Reunión terminada',aviso);
+    await load();render()
+  },
   async borrar(id){if(!confirm('¿Borrar esta reunión?'))return;const r=await sb.from('reuniones').delete().eq('id',id);if(r.error)return err(r.error);await load();render()}
 };
 return api})();
