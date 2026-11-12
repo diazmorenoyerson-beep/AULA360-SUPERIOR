@@ -12,7 +12,7 @@ const PESO={'Lectura Crítica':3,'Matemáticas':3,'Sociales y Ciudadanas':3,'Cie
 const OFI={1:{'Matemáticas':25,'Lectura Crítica':41,'Sociales y Ciudadanas':25,'Ciencias Naturales':29},
            2:{'Sociales y Ciudadanas':25,'Matemáticas':25,'Ciencias Naturales':29,'Inglés':55}};
 const OFI_TOT={1:120,2:134},SES_MIN=270;
-const FUENTE={'Matemáticas':['Matemáticas'],'Lectura Crítica':['Lectura Crítica'],'Sociales y Ciudadanas':['Sociales y Ciudadanas','Ciencias Sociales','Sociales'],'Ciencias Naturales':['Ciencias Naturales'],'Inglés':['Inglés']};
+const FUENTE={'Matemáticas':['Matemáticas'],'Lectura Crítica':['Lectura Crítica'],'Sociales y Ciudadanas':['Sociales y Ciudadanas','Ciencias Sociales','Sociales'],'Ciencias Naturales':['Ciencias Naturales','Biología','Química','Física'],'Inglés':['Inglés']};
 const LET='ABCDEFG';
 const Z={sims:[],items:[],targets:[],att:[],disp:[],names:{},res:null,run:null,ver:null,f:{t:'',d:'',m:'completo',c:[],due:'',n:1},loaded:false};
 const esc=s=>(typeof E==='function'?E(s):String(s??''));
