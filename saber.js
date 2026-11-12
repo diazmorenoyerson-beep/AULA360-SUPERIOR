@@ -77,9 +77,13 @@ async function start(sid,s){
     clearInterval(Z.timer);
     Z.timer=setInterval(()=>{
       if(!Z.run){clearInterval(Z.timer);return}
-      if(typeof tab!=='undefined'&&tab!=='saber'){return}
-      Z.run.left--;const e=document.getElementById('sbclk');if(e){e.textContent=mmss(Z.run.left);e.style.color=Z.run.left<300?'#dc2626':'#1d4ed8'}
-      if(Z.run.left<=0)finish(true)},1000);
+      Z.run.left=Math.max(0,Z.run.left-1);
+      if(typeof tab==='undefined'||tab==='saber'){
+        const e=document.getElementById('sbclk');
+        if(e){e.textContent=mmss(Z.run.left);e.style.color=Z.run.left<300?'#dc2626':'#1d4ed8'}
+      }
+      if(Z.run.left<=0)finish(true);
+    },1000);
     render();window.scrollTo(0,0);
   }catch(e){err(e)}
 }
