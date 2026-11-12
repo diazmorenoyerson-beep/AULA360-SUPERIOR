@@ -720,3 +720,14 @@ body{background:linear-gradient(180deg,#edf4f7 0,#f5f7fa 340px)!important}
  .aic-main .aic-card table thead th,.aic-main .aic-card table tbody td{padding:10px!important}
  .aic-main .aic-card input,.aic-main .aic-card select,.aic-main .aic-card textarea{font-size:16px!important}
 }
+
+/* Saber 11: respuestas y navegación accesibles */
+.aic-main .sb-answer{width:100%;min-height:54px;padding:13px 15px!important;border:1.5px solid #d8e3ec!important;border-radius:13px!important;background:linear-gradient(180deg,#fff,#f8fbfd)!important;color:#294b63!important;font-size:14px;font-weight:600;box-shadow:0 2px 0 #e2eaf0,0 5px 12px rgba(22,55,78,.045)!important;transition:border-color .16s ease,background .16s ease,transform .16s ease,box-shadow .16s ease}
+.aic-main .sb-answer:hover{border-color:#8caec5!important;transform:translateY(-1px)}
+.aic-main .sb-answer.is-selected{border-color:#2864e8!important;background:linear-gradient(180deg,#eff6ff,#e5efff)!important;color:#1749a5!important;box-shadow:inset 0 0 0 1px #2864e8,0 3px 0 #c9dcff!important}
+.aic-main .sb-answer b{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;margin-right:8px;border-radius:8px;background:#eaf0f5;color:#365b76;font-weight:850}
+.aic-main .sb-answer.is-selected b{background:#2864e8;color:#fff}
+.aic-main .sb-qnav{width:36px;height:36px;border:1px solid #d8e3ec!important;border-radius:10px!important;background:#f3f7fa!important;color:#526f83!important;font-size:12px;font-weight:800}
+.aic-main .sb-qnav.is-answered{background:#e5f3ec!important;border-color:#b9dfca!important;color:#18704e!important}
+.aic-main .sb-qnav.is-current{outline:2px solid #2864e8!important;outline-offset:2px}
+@media(max-width:600px){.aic-main .sb-answer{min-height:50px;padding:11px!important}}
