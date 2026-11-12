@@ -194,7 +194,7 @@ function vRes(){
   const fortaleza=resumenAreas.length?resumenAreas[resumenAreas.length-1]:null;
   const refuerzo=resumenAreas.length?resumenAreas[0]:null;
   const kpi=(label,value,sub)=>`<div class="aic-kpi"><div class="text-xs text-slate-500">${label}</div><div class="text-2xl font-extrabold" style="color:#102a5c">${value}</div><div class="text-xs text-slate-500">${sub}</div></div>`;
-  return`<div class="aic-card space-y-4"><div class="aic-card-head"><div><h3>Resultados · ${esc(s.title)}</h3><p>Mejor intento por sesión · datos de estudiantes que sí presentaron</p></div><button class="aic-link" onclick="SABER.cerrarVer()">Cerrar ✕</button></div>
+  return`<div class="aic-card space-y-4"><div class="aic-card-head"><div><h3>Resultados · ${esc(s.title)}</h3><p>Mejor intento por sesión · datos de estudiantes que sí presentaron</p></div><div class="flex flex-wrap gap-2"><button class="aic-link" onclick="SABER.exportar('${s.id}')">Exportar CSV ↓</button><button class="aic-link" onclick="SABER.cerrarVer()">Cerrar ✕</button></div></div>
   ${filas.length?`<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">${kpi('Estudiantes participantes',filas.length,'Con al menos un intento')}${kpi('Sesiones presentadas',sesiones,'Estudiante × sesión')}${kpi('Promedio global estimado',globals.length?Math.round(mean(globals))+'/500':'—','Entre participantes')}${kpi('Intentos registrados',atts.length,'Incluye reintentos')}</div>
   ${fortaleza&&refuerzo?`<div class="grid sm:grid-cols-2 gap-3"><div class="rounded-xl p-3" style="background:#edf8f2;border:1px solid #ccebd8"><div class="text-xs font-semibold" style="color:#18704e">FORTALEZA DEL GRUPO</div><div class="font-bold mt-1">${fortaleza.a}</div><div class="text-xl font-extrabold" style="color:#18704e">${fortaleza.v}/100</div></div><div class="rounded-xl p-3" style="background:#fff7e9;border:1px solid #f2dfb9"><div class="text-xs font-semibold" style="color:#9a6414">COMPETENCIA PARA REFORZAR</div><div class="font-bold mt-1">${refuerzo.a}</div><div class="text-xl font-extrabold" style="color:#9a6414">${refuerzo.v}/100</div></div></div>`:''}
   <div><h4 class="font-bold mb-2">Comparación por curso</h4><div class="aic-table-wrap"><table class="w-full text-sm text-left"><thead><tr class="text-slate-500"><th>Curso</th><th>Participantes</th>${AREAS.map(a=>`<th>${CORTA[a]}</th>`).join('')}<th>Global</th></tr></thead><tbody>${cursos.map(g=>`<tr class="border-t"><td class="py-2"><b>${esc(g.name)}</b></td><td>${g.students.length}</td>${AREAS.map(a=>`<td>${mediaArea(g,a)}</td>`).join('')}<td><b>${mediaCurso(g)}</b></td></tr>`).join('')}</tbody></table></div><p class="text-xs text-slate-500 mt-1">Los promedios por curso incluyen únicamente estudiantes con resultados en este simulacro; no representan la tasa de cobertura del curso completo.</p></div>
@@ -227,6 +227,16 @@ window.SABER={
   cerrar(){Z.res=null;render()},
   f(k,v){Z.f[k]=v},
   curso(id,on){Z.f.c=on?[...new Set([...Z.f.c,id])]:Z.f.c.filter(x=>x!==id)},
+  exportar(id){
+    const sim=Z.sims.find(x=>x.id===id);if(!sim)return;
+    const rows=[['Estudiante','Curso','Sesiones presentadas','Intentos','Lectura Crítica','Matemáticas','Sociales y Ciudadanas','Ciencias Naturales','Inglés','Global estimado / 500']];
+    const grouped={};Z.att.filter(a=>a.sim_id===id).forEach(a=>{(grouped[a.user_id]=grouped[a.user_id]||[]).push(a)});
+    const courseName=cid=>{const c=(D.courses||[]).find(x=>x.id===cid);return c?c.grade+'° '+c.name:'Curso sin identificar'};
+    Object.entries(grouped).forEach(([uid,list])=>{const p=Z.names[uid]||{},cb=combinar(list);rows.push([p.full_name||'Estudiante',courseName(p.course_id),new Set(list.map(x=>x.sesion)).size,list.length,...AREAS.map(a=>cb.areas[a]&&cb.areas[a].t?pct(cb.areas[a].c,cb.areas[a].t):''),cb.global??''])});
+    const csv='\\uFEFF'+rows.map(row=>row.map(v=>'\"'+String(v??'').replace(/\"/g,'\"\"')+'\"').join(';')).join('\\r\\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='AULA360_resultados_'+String(sim.title||'simulacro').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  },
   ver(id){Z.ver=id;render()},
   cerrarVer(){Z.ver=null;render()},
   async crear(){
