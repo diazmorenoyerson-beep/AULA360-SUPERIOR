@@ -131,7 +131,7 @@ async function doDocente(){
   for(const g of RG.gs){const l=parseCursos(RG.cur[g]);if(!l.length)return toast('⚠️','Faltan los cursos','Escribe los cursos de '+g+'°, por ejemplo: A, B, C.');cursos[g]=l}
   if(!RG.area)return toast('⚠️','Falta el área','Elige tu área.');
   if(!RG.asg.length)return toast('⚠️','Falta la asignatura','Marca la asignatura (o asignaturas) que dictas.');
-  const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{data:{account:'docente',full_name:nm,phone:tel,colegio_id:RG.otro?'':String(RG.col),sede_id:RG.otro?'':String(RG.sede||''),school_other:RG.otro?otroTxt:'',cursos,area:RG.area,asignaturas:RG.asg}}});
+  const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{emailRedirectTo:window.location.origin+'/',data:{account:'docente',full_name:nm,phone:tel,colegio_id:RG.otro?'':String(RG.col),sede_id:RG.otro?'':String(RG.sede||''),school_other:RG.otro?otroTxt:'',cursos,area:RG.area,asignaturas:RG.asg}}});
   if(error)return err(error);
   RG=RG0();D.muns=[];D.cols=[];
   if(!data.session){authMode='login';render();return toast('📧','Revisa tu correo','Confirma tu cuenta y luego inicia sesión.')}
@@ -154,7 +154,7 @@ async function doAuth(){
   }
   const full_name=v('nm'),grade=v('gr');
   if(!full_name)return toast('⚠️','Falta tu nombre','Escribe tu nombre completo.');
-  const{data,error}=await sb.auth.signUp({email,password,options:{data:{full_name,grade,document:dc,pw_initial:true}}});
+  const{data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin+'/',data:{full_name,grade,document:dc,pw_initial:true}}});
   if(error){if((error.message||'').toLowerCase().includes('database error'))return toast('⚠️','No se pudo crear la cuenta','Ese documento o ese correo ya tienen una cuenta. Si ya te registraste, pulsa «Entrar»: tu contraseña es tu número de documento.');return err(error)}
   if(!data.session){authMode='login';render();return toast('📧','Revisa tu correo','Abre el enlace más reciente y luego inicia sesión.')}
   boot();
