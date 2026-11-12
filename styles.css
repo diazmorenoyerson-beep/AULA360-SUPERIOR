@@ -552,3 +552,120 @@ body{background:linear-gradient(180deg,#edf4f7 0,#f5f7fa 340px)!important}
 }
 @media(max-width:520px){#app>.max-w-md{margin-top:1rem!important;padding:1.15rem!important;border-radius:20px!important}}
 @media(prefers-reduced-motion:reduce){#app input,#app select,#app textarea{transition:none!important}}
+
+
+/* AULA360 · refinamiento del espacio de trabajo docente y directivo */
+.aic-shell{
+  min-height:100vh!important;
+  background:
+    radial-gradient(ellipse at 82% 0%,rgba(47,126,167,.08),transparent 34%),
+    linear-gradient(180deg,#f3f7fa 0%,#edf3f7 100%)!important;
+}
+.aic-sidebar{
+  background:linear-gradient(180deg,#0b2038 0%,#103b59 58%,#0b304b 100%)!important;
+  border-right:1px solid rgba(255,255,255,.09)!important;
+  box-shadow:8px 0 28px rgba(9,35,57,.10)!important;
+}
+.aic-brand{
+  min-height:82px!important;padding:17px 18px!important;
+  border-bottom:1px solid rgba(255,255,255,.12)!important;
+}
+.aic-brand-full{max-width:178px!important;max-height:48px!important;object-fit:contain}
+.aic-side-label{
+  color:#9fb8ca!important;letter-spacing:.13em!important;
+  font-weight:800!important;padding:0 8px!important;
+}
+.aic-sidebar nav{padding:10px 10px 14px!important}
+.aic-sidebar nav .aic-nav{
+  min-height:43px!important;margin:3px 0!important;padding:9px 12px!important;
+  display:flex!important;align-items:center!important;gap:10px!important;
+  color:#e1edf5!important;background:rgba(255,255,255,.045)!important;
+  border:1px solid rgba(255,255,255,.055)!important;border-bottom:3px solid rgba(0,0,0,.16)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 7px rgba(0,0,0,.10)!important;
+  font-size:12.5px!important;font-weight:650!important;
+}
+.aic-sidebar nav .aic-nav>span{width:21px;flex:0 0 21px;text-align:center;font-size:16px}
+.aic-sidebar nav .aic-nav:hover{background:rgba(255,255,255,.12)!important;transform:translateX(2px)}
+.aic-sidebar nav .aic-nav.active{
+  background:linear-gradient(180deg,#ffe4a0 0%,#e9b64e 55%,#c58a32 100%)!important;
+  color:#17344d!important;border-color:#f9dda0!important;border-bottom-color:#865a20!important;
+}
+.aic-side-bottom{
+  background:rgba(3,20,36,.28)!important;border-top:1px solid rgba(255,255,255,.12)!important;
+  padding:14px 12px!important;
+}
+.aic-side-bottom b{color:#fff!important;font-size:12px!important}
+.aic-side-bottom small{color:#aac1d1!important}
+.aic-main{max-width:1680px!important;margin:0 auto!important;padding:30px clamp(18px,3vw,48px) 42px!important}
+.aic-top{
+  padding:0 0 21px!important;margin:0 0 22px!important;
+  border-bottom:1px solid #dce6ed!important;
+}
+.aic-eyebrow{color:#648197!important;font-size:10px!important;letter-spacing:.16em!important;font-weight:850!important}
+.aic-top h1{color:#143b57!important;letter-spacing:-.035em!important;font-weight:850!important}
+.aic-top p{color:#6d8394!important}
+.aic-icon-btn{
+  width:42px!important;height:42px!important;border-radius:13px!important;
+  background:linear-gradient(180deg,#fff,#eaf1f6)!important;
+  border:1px solid #d5e1e9!important;border-bottom:4px solid #b9cbd8!important;
+  box-shadow:0 5px 12px rgba(18,55,81,.08)!important;
+}
+.aic-user{
+  border:1px solid #d9e4eb!important;border-radius:14px!important;
+  background:linear-gradient(180deg,#fff,#f0f5f8)!important;
+  box-shadow:0 5px 12px rgba(18,55,81,.07)!important;padding:6px 10px!important;
+}
+.aic-avatar{
+  background:linear-gradient(145deg,#4c94bd,#164c72)!important;
+  color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 8px rgba(15,62,91,.2)!important;
+}
+.aic-hero{
+  position:relative;overflow:hidden!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+  background:linear-gradient(112deg,#103b5c 0%,#17658b 58%,#2789a3 100%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 7px 0 #dce7ed,0 17px 34px rgba(15,60,87,.16)!important;
+}
+.aic-hero:after{
+  content:"";position:absolute;inset:auto -8% -68% 42%;height:220%;
+  border:1px solid rgba(255,255,255,.13);border-radius:50%;
+  box-shadow:0 0 0 24px rgba(255,255,255,.035),0 0 0 52px rgba(255,255,255,.025);
+  pointer-events:none;
+}
+.aic-hero h2{letter-spacing:-.035em!important}
+.aic-hero p{color:rgba(255,255,255,.83)!important}
+.aic-section-head{margin:30px 0 14px!important}
+.aic-section-head h2{color:#173e5a!important;font-weight:850!important;letter-spacing:-.025em!important}
+.aic-section-head p{color:#71889a!important}
+.aic-kpi{
+  border:1px solid #e0e9ef!important;border-radius:17px!important;
+  transition:transform .18s ease,box-shadow .18s ease!important;
+}
+.aic-kpi:hover{transform:translateY(-3px)!important;box-shadow:inset 0 1px 0 #fff,0 9px 0 #e0e9ef,0 19px 30px rgba(17,49,77,.12)!important}
+.aic-kpi small{color:#6d8495!important;font-weight:700!important}
+.aic-kpi strong{color:#153e5a!important;letter-spacing:-.04em!important}
+.aic-card{
+  border:1px solid #e0e9ef!important;border-radius:18px!important;
+  background:linear-gradient(145deg,#fff 0%,#fbfdfe 100%)!important;
+}
+.aic-card-head h3{color:#173e5a!important;font-weight:850!important}
+.aic-card-head p{color:#7a8f9f!important}
+.aic-chip,.aic-period{
+  background:#edf5f8!important;color:#32627e!important;
+  border:1px solid #dceaf0!important;border-radius:999px!important;
+}
+.aic-empty{
+  border:1px dashed #cbdce6!important;border-radius:15px!important;
+  background:linear-gradient(145deg,#f8fbfd,#f0f6f9)!important;
+}
+.aic-footer{color:#7e93a2!important}
+@media(max-width:760px){
+ .aic-main{padding:17px 13px 28px!important}
+ .aic-brand{min-height:68px!important}
+ .aic-sidebar nav{padding:8px 12px 16px!important}
+ .aic-sidebar nav .aic-nav{min-height:45px!important}
+ .aic-top{align-items:flex-start!important;gap:12px!important}
+ .aic-top-actions{gap:6px!important}
+ .aic-user>span:not(.aic-avatar){display:none!important}
+ .aic-section-head{align-items:flex-start!important;gap:8px!important}
+}
+@media(hover:none){.aic-kpi:hover{transform:none!important}}
