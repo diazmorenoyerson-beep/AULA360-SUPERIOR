@@ -175,14 +175,33 @@ function vCrear(){
 }
 function vRes(){
   const s=Z.sims.find(x=>x.id===Z.ver);if(!s)return'';
-  const atts=Z.att.filter(a=>a.sim_id===s.id),porU={};atts.forEach(a=>{(porU[a.user_id]=porU[a.user_id]||[]).push(a)});
-  const cName=id=>{const c=(D.courses||[]).find(x=>x.id===id);return c?c.grade+'° '+c.name:'—'};
-  const filas=Object.entries(porU).map(([u,l])=>{const cb=combinar(l),p=Z.names[u]||{};return{n:p.full_name||'Estudiante',c:cName(p.course_id),cb,k:l.length}}).sort((a,b)=>(b.cb.global||0)-(a.cb.global||0));
+  const atts=Z.att.filter(a=>a.sim_id===s.id),porU={};
+  atts.forEach(a=>{(porU[a.user_id]=porU[a.user_id]||[]).push(a)});
+  const cName=id=>{const c=(D.courses||[]).find(x=>x.id===id);return c?c.grade+'° '+c.name:'Curso sin identificar'};
+  const filas=Object.entries(porU).map(([u,l])=>{
+    const cb=combinar(l),p=Z.names[u]||{};
+    return{u,n:p.full_name||'Estudiante',c:cName(p.course_id),courseId:p.course_id||'sin-curso',cb,ses:new Set(l.map(x=>x.sesion)).size,attempts:l.length};
+  }).sort((a,b)=>(b.cb.global||0)-(a.cb.global||0));
   const prom=a=>{const v=filas.map(f=>f.cb.areas[a]).filter(x=>x&&x.t).map(x=>pct(x.c,x.t));return v.length?Math.round(mean(v)):'—'};
-  return`<div class="aic-card"><div class="aic-card-head"><div><h3>Resultados · ${esc(s.title)}</h3><p>Mejor intento de cada sesión · ${filas.length} estudiante(s) con resultados</p></div><button class="aic-link" onclick="SABER.cerrarVer()">Cerrar ✕</button></div>
-  ${filas.length?`<div class="aic-table-wrap"><table class="w-full text-sm text-left"><tr class="text-slate-500"><th>Estudiante</th><th>Curso</th>${AREAS.map(a=>`<th>${CORTA[a]}</th>`).join('')}<th>Global est.</th></tr>
-  ${filas.map(f=>`<tr class="border-t"><td class="py-1"><b>${esc(f.n)}</b></td><td>${esc(f.c)}</td>${AREAS.map(a=>`<td>${f.cb.areas[a]&&f.cb.areas[a].t?pct(f.cb.areas[a].c,f.cb.areas[a].t):'—'}</td>`).join('')}<td><b>${f.cb.global==null?'—':f.cb.global}</b></td></tr>`).join('')}
-  <tr class="border-t" style="background:#f1f5fb"><td class="py-1" colspan="2"><b>Promedio del grupo</b></td>${AREAS.map(a=>`<td><b>${prom(a)}</b></td>`).join('')}<td><b>${filas.filter(f=>f.cb.global!=null).length?Math.round(mean(filas.filter(f=>f.cb.global!=null).map(f=>f.cb.global))):'—'}</b></td></tr></table></div><p class="text-xs text-slate-500 mt-2">Áreas de 0 a 100 y global de 0 a 500 (estimados con el % de respuestas correctas; no son el puntaje oficial del ICFES).</p>`:'<p class="text-sm text-slate-500">Todavía nadie ha presentado este simulacro.</p>'}</div>`;
+  const globals=filas.filter(f=>f.cb.global!=null).map(f=>f.cb.global);
+  const sesiones=new Set(atts.map(a=>a.user_id+':'+a.sesion)).size;
+  const grupos={};
+  filas.forEach(f=>{const g=grupos[f.courseId]||(grupos[f.courseId]={name:f.c,students:[],areas:{}});g.students.push(f);AREAS.forEach(a=>{const x=f.cb.areas[a];if(x&&x.t){const z=g.areas[a]||(g.areas[a]=[]);z.push(pct(x.c,x.t))}})});
+  const cursos=Object.values(grupos).sort((a,b)=>a.name.localeCompare(b.name,'es'));
+  const mediaCurso=g=>{const v=g.students.map(x=>x.cb.global).filter(x=>x!=null);return v.length?Math.round(mean(v)):'—'};
+  const mediaArea=(g,a)=>g.areas[a]&&g.areas[a].length?Math.round(mean(g.areas[a])):'—';
+  const resumenAreas=AREAS.map(a=>({a,v:prom(a)})).filter(x=>x.v!=='—').sort((a,b)=>a.v-b.v);
+  const fortaleza=resumenAreas.length?resumenAreas[resumenAreas.length-1]:null;
+  const refuerzo=resumenAreas.length?resumenAreas[0]:null;
+  const kpi=(label,value,sub)=>`<div class="aic-kpi"><div class="text-xs text-slate-500">${label}</div><div class="text-2xl font-extrabold" style="color:#102a5c">${value}</div><div class="text-xs text-slate-500">${sub}</div></div>`;
+  return`<div class="aic-card space-y-4"><div class="aic-card-head"><div><h3>Resultados · ${esc(s.title)}</h3><p>Mejor intento por sesión · datos de estudiantes que sí presentaron</p></div><button class="aic-link" onclick="SABER.cerrarVer()">Cerrar ✕</button></div>
+  ${filas.length?`<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">${kpi('Estudiantes participantes',filas.length,'Con al menos un intento')}${kpi('Sesiones presentadas',sesiones,'Estudiante × sesión')}${kpi('Promedio global estimado',globals.length?Math.round(mean(globals))+'/500':'—','Entre participantes')}${kpi('Intentos registrados',atts.length,'Incluye reintentos')}</div>
+  ${fortaleza&&refuerzo?`<div class="grid sm:grid-cols-2 gap-3"><div class="rounded-xl p-3" style="background:#edf8f2;border:1px solid #ccebd8"><div class="text-xs font-semibold" style="color:#18704e">FORTALEZA DEL GRUPO</div><div class="font-bold mt-1">${fortaleza.a}</div><div class="text-xl font-extrabold" style="color:#18704e">${fortaleza.v}/100</div></div><div class="rounded-xl p-3" style="background:#fff7e9;border:1px solid #f2dfb9"><div class="text-xs font-semibold" style="color:#9a6414">COMPETENCIA PARA REFORZAR</div><div class="font-bold mt-1">${refuerzo.a}</div><div class="text-xl font-extrabold" style="color:#9a6414">${refuerzo.v}/100</div></div></div>`:''}
+  <div><h4 class="font-bold mb-2">Comparación por curso</h4><div class="aic-table-wrap"><table class="w-full text-sm text-left"><thead><tr class="text-slate-500"><th>Curso</th><th>Participantes</th>${AREAS.map(a=>`<th>${CORTA[a]}</th>`).join('')}<th>Global</th></tr></thead><tbody>${cursos.map(g=>`<tr class="border-t"><td class="py-2"><b>${esc(g.name)}</b></td><td>${g.students.length}</td>${AREAS.map(a=>`<td>${mediaArea(g,a)}</td>`).join('')}<td><b>${mediaCurso(g)}</b></td></tr>`).join('')}</tbody></table></div><p class="text-xs text-slate-500 mt-1">Los promedios por curso incluyen únicamente estudiantes con resultados en este simulacro; no representan la tasa de cobertura del curso completo.</p></div>
+  <div><h4 class="font-bold mb-2">Resultados individuales</h4><div class="aic-table-wrap"><table class="w-full text-sm text-left"><thead><tr class="text-slate-500"><th>Estudiante</th><th>Curso</th>${AREAS.map(a=>`<th>${CORTA[a]}</th>`).join('')}<th>Global est.</th><th>Sesiones</th></tr></thead><tbody>
+  ${filas.map(f=>`<tr class="border-t"><td class="py-2"><b>${esc(f.n)}</b></td><td>${esc(f.c)}</td>${AREAS.map(a=>`<td>${f.cb.areas[a]&&f.cb.areas[a].t?pct(f.cb.areas[a].c,f.cb.areas[a].t):'—'}</td>`).join('')}<td><b>${f.cb.global==null?'—':f.cb.global}</b></td><td>${f.ses}</td></tr>`).join('')}
+  <tr class="border-t" style="background:#f1f5fb"><td class="py-2" colspan="2"><b>Promedio de participantes</b></td>${AREAS.map(a=>`<td><b>${prom(a)}</b></td>`).join('')}<td><b>${globals.length?Math.round(mean(globals)):'—'}</b></td><td>—</td></tr></tbody></table></div></div>
+  <p class="text-xs text-slate-500">Áreas de 0 a 100 y global de 0 a 500, estimados con porcentaje de respuestas correctas. No son puntajes oficiales ICFES. Para cada sesión se toma el intento con mayor número de respuestas correctas.</p>`:'<p class="text-sm text-slate-500">Todavía nadie ha presentado este simulacro.</p>'}</div>`;
 }
 function vDoc(){
   const cName=id=>{const c=(D.courses||[]).find(x=>x.id===id);return c?c.grade+'° '+c.name:'—'};
