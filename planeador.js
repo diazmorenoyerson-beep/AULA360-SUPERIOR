@@ -127,7 +127,7 @@ function lista(){
 async function guardarCur(){
   const c=Z.cur,row={docente_id:M.id,colegio_id:M.colegio_id||null,fecha:c.fecha,asignatura:c.asignatura||null,grado:c.grado===''?null:+c.grado,grupo:c.grupo||null,datos:c.datos,updated_at:new Date().toISOString()};
   if(!c.asignatura)throw new Error('Elige el área / asignatura.');
-  if(c.id){const r=await sb.from('planeador_diario').update(row).eq('id',c.id);if(r.error)throw r.error}
+  if(c.id){const {docente_id,colegio_id,...editable}=row;const r=await sb.from('planeador_diario').update(editable).eq('id',c.id);if(r.error)throw r.error}
   else{const r=await sb.from('planeador_diario').insert(row).select('id').single();if(r.error)throw r.error;c.id=r.data.id}
 }
 const api={
