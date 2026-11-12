@@ -12,7 +12,7 @@ const PESO={'Lectura Crítica':3,'Matemáticas':3,'Sociales y Ciudadanas':3,'Cie
 const OFI={1:{'Matemáticas':25,'Lectura Crítica':41,'Sociales y Ciudadanas':25,'Ciencias Naturales':29},
            2:{'Sociales y Ciudadanas':25,'Matemáticas':25,'Ciencias Naturales':29,'Inglés':55}};
 const OFI_TOT={1:120,2:134},SES_MIN=270;
-const FUENTE={'Matemáticas':['Matemáticas'],'Lectura Crítica':['Lectura Crítica'],'Sociales y Ciudadanas':['Sociales y Ciudadanas','Ciencias Sociales','Sociales'],'Ciencias Naturales':['Biología','Química','Física'],'Inglés':['Inglés']};
+const FUENTE={'Matemáticas':['Matemáticas'],'Lectura Crítica':['Lectura Crítica'],'Sociales y Ciudadanas':['Sociales y Ciudadanas','Ciencias Sociales','Sociales'],'Ciencias Naturales':['Ciencias Naturales'],'Inglés':['Inglés']};
 const LET='ABCDEFG';
 const Z={sims:[],items:[],targets:[],att:[],disp:[],names:{},res:null,run:null,ver:null,f:{t:'',d:'',m:'completo',c:[],due:'',n:1},loaded:false};
 const esc=s=>(typeof E==='function'?E(s):String(s??''));
@@ -155,10 +155,13 @@ function vEstructura(){
   const tot=AREAS.reduce((s,a)=>s+(OFI[1][a]||0)+(OFI[2][a]||0),0);
   return`<div class="aic-card"><div class="aic-card-head"><div><h3>Estructura oficial del Saber 11</h3><p>Preguntas calificadas por sesión, según la guía de orientación del ICFES (${tot} en total)</p></div></div>
   <div class="aic-table-wrap"><table class="w-full text-sm text-left"><tr class="text-slate-500"><th>Prueba</th><th>Sesión 1</th><th>Sesión 2</th><th>Total</th><th>En el banco</th><th>Estado</th></tr>${AREAS.map(fila).join('')}</table></div>
-  <p class="text-xs text-slate-500 mt-2">Cada sesión dura 4 h 30 min. Si falta una prueba en el banco, el simulacro se arma sin ella y queda marcado como <b>parcial</b>. Ciencias Naturales se arma con partes iguales de las materias que sí tengan preguntas.</p></div>`;
+  <p class="text-xs text-slate-500 mt-2">Cada sesión dura 4 h 30 min. Si falta una prueba en el banco, el simulacro se arma sin ella y queda marcado como <b>parcial</b>. Ciencias Naturales usa preguntas clasificadas en ese componente del banco. Si no hay suficientes preguntas publicadas y calificables, el simulacro se crea parcial.</p></div>`;
 }
 function vCrear(){
   const F=Z.f,cs=(D.courses||[]).slice().sort((a,b)=>a.grade-b.grade||String(a.name).localeCompare(String(b.name)));
+  const req=F.m==='sesion1'?{'Matemáticas':25,'Lectura Crítica':41,'Sociales y Ciudadanas':25,'Ciencias Naturales':29}:F.m==='sesion2'?{'Matemáticas':25,'Sociales y Ciudadanas':25,'Ciencias Naturales':29,'Inglés':55}:{'Matemáticas':50,'Lectura Crítica':41,'Sociales y Ciudadanas':50,'Ciencias Naturales':58,'Inglés':55};
+  const cov=Object.entries(req).map(([a,n])=>({a,n,d:disponible(a)}));
+  const faltan=cov.filter(x=>x.d<x.n);
   return`<div class="aic-card"><div class="aic-card-head"><div><h3>Crear simulacro Saber 11</h3><p>Se arma solo, con las preguntas publicadas del banco y la estructura oficial</p></div></div>
   <div class="grid sm:grid-cols-2 gap-3">
    <label class="text-sm block">Nombre<input class="border rounded-lg p-2 w-full" maxlength="80" value="${esc(F.t)}" oninput="SABER.f('t',this.value)" placeholder="Ej. Simulacro Saber 11 · Noviembre"></label>
@@ -167,6 +170,7 @@ function vCrear(){
    <label class="text-sm block">Intentos por sesión<input type="number" min="1" max="5" class="border rounded-lg p-2" style="width:6rem" value="${F.n}" oninput="SABER.f('n',Math.max(1,Math.min(5,+this.value||1)))"></label>
    <label class="text-sm block sm:col-span-2">Indicaciones para los estudiantes (opcional)<textarea class="border rounded-lg p-2 w-full" rows="2" maxlength="500" oninput="SABER.f('d',this.value)">${esc(F.d)}</textarea></label>
    <div class="text-sm sm:col-span-2"><div class="font-semibold mb-1">Cursos que lo presentan</div><div class="flex flex-wrap gap-3">${cs.map(c=>`<label class="flex items-center gap-2"><input type="checkbox" ${F.c.includes(c.id)?'checked':''} onchange="SABER.curso('${c.id}',this.checked)"> ${c.grade}° ${esc(c.name)}</label>`).join('')||'<span class="text-xs text-slate-500">Primero crea un curso en "Cursos y estudiantes".</span>'}</div></div></div>
+  <div class="mt-4 rounded-xl p-3" style="background:#f7fafd;border:1px solid #dce7ef"><div class="font-semibold text-sm mb-2">Cobertura del banco para esta configuración</div><div class="grid sm:grid-cols-2 gap-2">${cov.map(x=>`<div class="flex justify-between gap-2 text-xs"><span>${x.a}</span><b style="color:${x.d>=x.n?'#168052':'#b7791f'}">${x.d} / ${x.n} ${x.d>=x.n?'✓':'· incompletas'}</b></div>`).join('')}</div>${faltan.length?`<p class="text-xs mt-2" style="color:#a16207">Atención: el banco no alcanza la estructura solicitada en ${faltan.map(x=>x.a).join(', ')}. El sistema creará un simulacro parcial con las preguntas disponibles; no completará los faltantes con preguntas inventadas.</p>`:'<p class="text-xs mt-2" style="color:#168052">Cobertura suficiente según el conteo actual del banco. Las preguntas se seleccionan al crear el simulacro.</p>'}</div>
   <div class="mt-3"><button onclick="SABER.crear()" class="px-5 py-2 rounded-lg bg-indigo-600 text-white">Crear simulacro Saber 11</button></div></div>`;
 }
 function vRes(){
@@ -211,6 +215,9 @@ window.SABER={
     try{
       if(!F.t.trim())throw new Error('Escribe un nombre para el simulacro.');
       if(!F.c.length)throw new Error('Marca al menos un curso.');
+      const req=F.m==='sesion1'?{'Matemáticas':25,'Lectura Crítica':41,'Sociales y Ciudadanas':25,'Ciencias Naturales':29}:F.m==='sesion2'?{'Matemáticas':25,'Sociales y Ciudadanas':25,'Ciencias Naturales':29,'Inglés':55}:{'Matemáticas':50,'Lectura Crítica':41,'Sociales y Ciudadanas':50,'Ciencias Naturales':58,'Inglés':55};
+      const faltan=Object.entries(req).filter(([a,n])=>disponible(a)<n);
+      if(faltan.length&&!confirm('El banco no tiene suficientes preguntas publicadas y calificables para completar '+faltan.map(([a,n])=>a+' ('+disponible(a)+'/'+n+')').join(', ')+'.\\n\\nSe creará un simulacro PARCIAL con las preguntas disponibles. ¿Continuar?'))return;
       const r=await sb.rpc('create_saber_sim',{p_title:F.t,p_description:F.d||null,p_due:F.due?new Date(F.due+'T23:59:00').toISOString():null,p_max:F.n,p_courses:F.c,p_modo:F.m});
       if(r.error)throw r.error;
       toast('✅','Simulacro creado','Ya lo ven los estudiantes de los cursos elegidos.');
