@@ -46,13 +46,15 @@ function cuerpoItem(it,i){
   const P=it.pq,r=window.HZB.resumen(P),ex=it.existente;
   const completo=ex&&ex.paginas.size>=r.conImagen&&r.conImagen>0&&ex.paginasOk;
   const mat=`<select class="border rounded-lg p-2" ${ex?'disabled':''} onchange="BANCO.setMateria(${i},this.value)">${B.materias.map(m=>`<option ${m===it.materia?'selected':''}>${E(m)}</option>`).join('')}${B.materias.includes(it.materia)?'':`<option selected>${E(it.materia)}</option>`}</select>`;
+  const componentes=['Lectura Crítica','Matemáticas','Sociales y Ciudadanas','Ciencias Naturales','Inglés'];
+  const comp=`<select class="border rounded-lg p-2 w-full" ${ex?'disabled':''} onchange="BANCO.setComponente(${i},this.value)"><option value="">Sin clasificar en Saber 11</option>${componentes.map(x=>`<option value="${E(x)}" ${it.componente===x?'selected':''}>${E(x)}</option>`).join('')}</select>`;
   const avisos=P.avisos.concat(P.notas);
   const informe=it.informe?`<div class="text-sm bq-mt">${it.informe}</div>`:'';
   const estado=it.estado==='subiendo'?`<div class="bq-mt"><div class="bq-barra"><div id="bq_b${i}"></div></div><p class="text-xs bq-mt" id="bq_t${i}">Preparando…</p></div>`
     :it.estado==='hecho'?`${informe}<div class="bq-mt">${btn(`BANCO.quitarItem(${i})`,'Quitar de la lista')}</div>`
     :`${informe}<div class="bq-mt flex flex-wrap gap-2 items-center">${completo?'<span class="text-sm bq-ok">✅ Este paquete ya está completo en el banco.</span>':btn(`BANCO.subir(${i})`,ex?'🔁 Completar lo que falta':'⬆️ Subir al banco',BTN)}${btn(`BANCO.quitarItem(${i})`,'Quitar de la lista')}</div>`;
   return`<div class="flex flex-wrap gap-3 items-center"><div><div class="font-semibold">${E(P.nombre)}</div><div class="text-xs text-slate-500">Archivo: ${E(it.nombre)} · ${mb(it.tam)} · formato: ${E({biologia:'paquete de Biología',quimica:'paquete de Química',lectura:'paquete de Lectura Crítica',general:'formato general (banco.json)'}[P.formato]||P.formato)}</div></div></div>
-    <div class="grid sm:grid-cols-3 gap-2 bq-mt text-sm"><label>Materia ${mat}</label><div><b>${r.paginas}</b> páginas (${r.conImagen} con imagen${r.sinImagen?`, <span class="bq-mal">${r.sinImagen} sin imagen</span>`:''})</div><div>PDF original: <b>${r.pdf?'sí':'no'}</b> · Claves: <b>${r.claves}</b></div></div>
+    <div class="grid sm:grid-cols-3 gap-2 bq-mt text-sm"><label>Materia escolar ${mat}</label><label>Componente Saber 11 ${comp}</label><div><b>${r.paginas}</b> páginas (${r.conImagen} con imagen${r.sinImagen?`, <span class="bq-mal">${r.sinImagen} sin imagen</span>`:''})</div><div>PDF original: <b>${r.pdf?'sí':'no'}</b> · Claves: <b>${r.claves}</b></div></div>
     ${ex?`<p class="text-xs bq-av bq-mt">Ya existe en el banco como «${E(ex.materia)}» (${ex.paginas.size} de ${r.conImagen} páginas cargadas). Si pulsas «Completar», solo se suben las que faltan.</p>`:''}
     ${avisos.length?`<div class="text-xs bq-av bq-mt">${avisos.slice(0,6).map(E).join('<br>')}${avisos.length>6?`<br>… y ${avisos.length-6} avisos más`:''}</div>`:''}${estado}`;
 }
@@ -88,6 +90,8 @@ async function subirItem(i){
   const it=B.items[i],P=it.pq;
   const materia=String(it.materia||'').trim();
   if(materia.length<2)throw new Error('Escribe o elige la materia del paquete.');
+  const componentes=['Lectura Crítica','Matemáticas','Sociales y Ciudadanas','Ciencias Naturales','Inglés'];
+  if(it.componente&&!componentes.includes(it.componente))throw new Error('El componente Saber 11 no es válido.');
   it.estado='subiendo';render();
   const prog=(t,p)=>{setT('bq_t'+i,t);setB('bq_b'+i,p)};
   const inf={imgNuevas:0,imgYa:0,imgMal:[],pagNuevas:0,pagYa:0,clavesNuevas:0,pdf:''};
@@ -97,7 +101,7 @@ async function subirItem(i){
   let doc=(await sb.from('banco_documentos').select('*').eq('huella',P.huella).maybeSingle()).data;
   if(!doc){
     doc=ok(await sb.from('banco_documentos').insert({materia,nombre:P.nombre.slice(0,200),archivo_fuente:P.archivo_fuente||null,formato:P.formato,huella:P.huella,total_paginas:P.paginas.length,
-      referentes:P.referentes||{},notas:P.notas.concat(P.avisos),subido_por:M.id}).select().single());
+      referentes:P.referentes||{},notas:P.notas.concat(P.avisos),subido_por:M.id,componente_saber11:it.componente||null}).select().single());
   }
   // 2) PDF original
   if(P.pdf&&!doc.pdf_path){
@@ -166,17 +170,17 @@ window.BANCO={
         try{
           if(!/\.zip$/i.test(f.name))throw new Error('Este archivo no es un .zip.');
           if(f.size>200*1024*1024)throw new Error('El zip pesa más de 200 MB. Divídelo en paquetes más pequeños.');
-          const zip=await JSZip.loadAsync(f);it.F=envoltorio(zip);it.pq=await HZB.analizar(it.F);it.materia=it.pq.materia;it.estado='listo';
+          const zip=await JSZip.loadAsync(f);it.F=envoltorio(zip);it.pq=await HZB.analizar(it.F);it.materia=it.pq.materia;it.componente='';it.estado='listo';
           const ex=(await sb.from('banco_documentos').select('id,materia').eq('huella',it.pq.huella).maybeSingle()).data;
           if(ex){const ps=await todas(()=>sb.from('banco_paginas').select('pagina').eq('documento_id',ex.id));
             const imgs=it.pq.paginas.filter(p=>p.imagen).length;
-            it.existente={id:ex.id,materia:ex.materia,paginas:new Set(ps.map(x=>x.pagina)),paginasOk:ps.length>=imgs};it.materia=ex.materia}
+            it.existente={id:ex.id,materia:ex.materia,paginas:new Set(ps.map(x=>x.pagina)),paginasOk:ps.length>=imgs};it.materia=ex.materia;it.componente=ex.componente_saber11||''}
         }catch(e){it.estado='error';it.mensaje=(e&&e.message)||String(e)}
       }
       input.value='';render();
     })();
   },
-  setMateria(i,v){B.items[i].materia=v},
+  setMateria(i,v){B.items[i].materia=v},\n  setComponente(i,v){B.items[i].componente=v},
   quitarItem(i){B.items.splice(i,1);render()},
   async subir(i){try{await subirItem(i)}catch(e){const it=B.items[i];if(it){it.estado='listo'}err(e);render()}},
   async verificar(id){
