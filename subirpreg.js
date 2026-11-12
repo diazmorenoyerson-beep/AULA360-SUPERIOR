@@ -9,7 +9,7 @@ async function load(){
   const s=await sb.from('asignaturas').select('nombre,banco_subject').order('nombre');
   const seen=new Set();const mias=M.asignaturas||[];Z.subs=(s.data||[]).filter(x=>x.banco_subject&&!seen.has(x.banco_subject)&&seen.add(x.banco_subject)&&(M.is_admin||mias.includes(x.banco_subject)));
   if(!Z.f)Z.f=nuevo();
-  const c=await sb.from('questions').select('id',{count:'exact',head:true}).eq('autor_id',M.id);Z.mis=c.count||0;
+  const c=await sb.from('questions').select('id',{count:'exact',head:true}).eq('author_id',M.id);Z.mis=c.count||0;
 }
 function parse(t){
   t=t.replace(/\r/g,'');
