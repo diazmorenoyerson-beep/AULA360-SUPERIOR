@@ -1,0 +1,9 @@
+-- AULA360: infraestructura y RPC del módulo de simulacros impresos y diagnósticos.
+-- Aplicada en Supabase el 2026-11-12.
+-- Incluye tablas saber_imp*, RLS, creación de cuadernillos, contenido,
+-- listado de estudiantes, persistencia de hojas y resultados agregados.
+-- Requiere preguntas publicadas con question_keys válidas.
+-- La generación de preguntas IA permanece deshabilitada hasta conectar su proveedor.
+-- La calificación OMR se procesa en cliente; esta capa valida y califica las respuestas recibidas.
+-- No contiene datos ficticios.
+-- Ver implementación aplicada en el proyecto Supabase frhunuivktmfjiyvdqha.
