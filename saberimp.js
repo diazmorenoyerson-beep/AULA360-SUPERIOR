@@ -104,14 +104,17 @@ function calSleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 async function calImg(file){
   let bmp=null,url=null;
   try{
-    if(typeof createImageBitmap==='function')bmp=await createImageBitmap(file,{imageOrientation:'from-image'});
-    else{
+    if(typeof createImageBitmap==='function'){
+      try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'})}
+      catch(x){bmp=null}
+    }
+    if(!bmp){
       url=URL.createObjectURL(file);
       bmp=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(new Error('No se pudo abrir la imagen. Usa JPG o PNG.'));im.src=url});
     }
     const w0=bmp.width||bmp.naturalWidth,h0=bmp.height||bmp.naturalHeight;
     if(!w0||!h0)throw new Error('La imagen no tiene dimensiones válidas.');
-    const k=Math.min(1,2800/Math.max(w0,h0)),w=Math.round(w0*k),h=Math.round(h0*k);
+    const k=Math.min(1,2800/Math.max(w0,h0)),w=Math.max(1,Math.round(w0*k)),h=Math.max(1,Math.round(h0*k));
     const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
     const ctx=canvas.getContext('2d',{willReadFrequently:true});
     if(!ctx)throw new Error('El navegador no pudo preparar la imagen.');
