@@ -54,7 +54,7 @@ const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;
 const fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
 const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0;
 const v=id=>document.getElementById(id)?.value?.trim()||'';
-const RG0=()=>({nm:'',tel:'',em:'',pw:'',dep:'',mun:'',col:'',otro:false,otroTxt:'',q:'',gs:[],cur:{},area:'',asg:[]});
+const RG0=()=>({nm:'',tel:'',em:'',pw:'',dep:'',mun:'',col:'',otro:false,otroTxt:'',sede:'',q:'',gs:[],cur:{},area:'',asg:[]});
 let M=null,tab='sim',S=null,RES=null,D={},timer=null,charts=[],chan=null,liveChan=null,authMode='login',QF={g:11,s:'',f:'all',p:0},SF={k:'simulacro',t:'',g:11,s:'',n:10,m:2,a:1,due:'',desc:'',cs:[]},CF={g:6,name:''},RF={c:'',f:'excel',txt:'',rows:[],skip:0,fname:''},RG=RG0(),ED={id:'',nm:'',tel:'',area:'',asg:[],gs:[]},PJ={c:'',t:'',s:'',n:10,v:3,d:'',st:'',ver:'',refs:[]},LT={l1:'',l2:'',l3:'',logo:''};
 
 function toast(ic,t,d){const e=document.createElement('div');e.className='pop bg-white border-l-4 border-amber-400 shadow-xl rounded-xl p-3 w-72 flex gap-3';e.innerHTML=`<div class="text-3xl">${ic}</div><div><div class="font-bold text-sm">${E(t)}</div><div class="text-xs text-slate-600">${E(d)}</div></div>`;document.getElementById('toast').appendChild(e);setTimeout(()=>e.remove(),6500)}
@@ -97,12 +97,12 @@ async function setMode(m){
   render();
 }
 async function onDep(id){
-  RG.dep=id;RG.mun='';RG.col='';RG.q='';D.muns=[];D.cols=[];
+  RG.dep=id;RG.mun='';RG.col='';RG.sede='';RG.q='';D.muns=[];D.cols=[];D.sedes=[];
   if(id){const r=await sb.from('municipios').select('id,nombre').eq('departamento_id',+id).order('nombre');D.muns=r.data||[]}
   render();
 }
 async function onMun(id){
-  RG.mun=id;RG.col='';RG.q='';D.cols=[];
+  RG.mun=id;RG.col='';RG.sede='';RG.q='';D.cols=[];D.sedes=[];
   if(id){const r=await sb.from('colegios').select('id,nombre').eq('municipio_id',+id).order('nombre').limit(1000);D.cols=r.data||[]}
   render();
 }
@@ -111,6 +111,7 @@ function colOpts(){
   const q=norm(RG.q);
   return'<option value="">Elige tu colegio…</option>'+(D.cols||[]).filter(c=>!q||norm(c.nombre).includes(q)||String(c.id)===String(RG.col)).map(c=>`<option value="${c.id}" ${String(c.id)===String(RG.col)?'selected':''}>${E(c.nombre)}</option>`).join('');
 }
+async function onColegio(id){RG.col=id;RG.sede='';D.sedes=[];if(id){const r=await sb.from('colegio_sedes').select('id,nombre,tipo_sede,direccion').eq('colegio_id',+id).order('nombre');D.sedes=r.data||[];if(D.sedes.length===1)RG.sede=String(D.sedes[0].id)}render()}
 function paintCols(){const s=document.getElementById('colsel');if(s)s.innerHTML=colOpts()}
 function togG(g,on){RG.gs=on?[...new Set([...RG.gs,g])].sort((a,b)=>a-b):RG.gs.filter(x=>x!==g);render()}
 function togA(n,on){RG.asg=on?[...new Set([...RG.asg,n])]:RG.asg.filter(x=>x!==n)}
@@ -123,13 +124,14 @@ async function doDocente(){
   if(pw.length<6)return toast('⚠️','Contraseña muy corta','Usa mínimo 6 caracteres.');
   if(!RG.dep||!RG.mun)return toast('⚠️','Falta la ubicación','Elige tu departamento y tu municipio.');
   if(!RG.otro&&!RG.col)return toast('⚠️','Falta el colegio','Elige tu colegio o marca «Mi colegio no aparece».');
+  if(!RG.otro&&(D.sedes||[]).length&&!RG.sede)return toast('⚠️','Falta la sede','Selecciona la sede donde trabajas.');
   if(RG.otro&&otroTxt.length<3)return toast('⚠️','Falta el nombre del colegio','Escribe el nombre de tu colegio.');
   if(!RG.gs.length)return toast('⚠️','Faltan los grados','Marca los grados en los que dictas clase.');
   const cursos={};
   for(const g of RG.gs){const l=parseCursos(RG.cur[g]);if(!l.length)return toast('⚠️','Faltan los cursos','Escribe los cursos de '+g+'°, por ejemplo: A, B, C.');cursos[g]=l}
   if(!RG.area)return toast('⚠️','Falta el área','Elige tu área.');
   if(!RG.asg.length)return toast('⚠️','Falta la asignatura','Marca la asignatura (o asignaturas) que dictas.');
-  const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{data:{account:'docente',full_name:nm,phone:tel,colegio_id:RG.otro?'':String(RG.col),school_other:RG.otro?otroTxt:'',cursos,area:RG.area,asignaturas:RG.asg}}});
+  const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{data:{account:'docente',full_name:nm,phone:tel,colegio_id:RG.otro?'':String(RG.col),sede_id:RG.otro?'':String(RG.sede||''),school_other:RG.otro?otroTxt:'',cursos,area:RG.area,asignaturas:RG.asg}}});
   if(error)return err(error);
   RG=RG0();D.muns=[];D.cols=[];
   if(!data.session){authMode='login';render();return toast('📧','Revisa tu correo','Confirma tu cuenta y luego inicia sesión.')}
@@ -817,7 +819,8 @@ function vAuth(){
     <input class="w-full border rounded-lg p-2" type="password" placeholder="Contraseña (mín. 6)" value="${E(RG.pw)}" oninput="RG.pw=this.value">
     <label class="text-sm block">Departamento<select class="w-full border rounded-lg p-2 mt-1" onchange="onDep(this.value)"><option value="">Elige tu departamento…</option>${deps.map(d=>`<option value="${d.id}" ${String(d.id)===String(RG.dep)?'selected':''}>${E(d.nombre)}</option>`).join('')}</select></label>
     <label class="text-sm block">Municipio<select class="w-full border rounded-lg p-2 mt-1" ${RG.dep?'':'disabled'} onchange="onMun(this.value)"><option value="">Elige tu municipio…</option>${muns.map(x=>`<option value="${x.id}" ${String(x.id)===String(RG.mun)?'selected':''}>${E(x.nombre)}</option>`).join('')}</select></label>
-    ${RG.otro?`<label class="text-sm block">Nombre de tu colegio<input class="w-full border rounded-lg p-2 mt-1" placeholder="Escribe el nombre de tu colegio" value="${E(RG.otroTxt)}" oninput="RG.otroTxt=this.value"></label>`:`<label class="text-sm block">Colegio<input id="colq" class="w-full border rounded-lg p-2 mt-1" placeholder="Escribe para buscar tu colegio…" ${RG.mun?'':'disabled'} value="${E(RG.q)}" oninput="RG.q=this.value;paintCols()"><select id="colsel" class="w-full border rounded-lg p-2 mt-1" ${RG.mun?'':'disabled'} onchange="RG.col=this.value">${colOpts()}</select></label>`}
+    ${RG.otro?`<label class="text-sm block">Nombre de tu colegio<input class="w-full border rounded-lg p-2 mt-1" placeholder="Escribe el nombre de tu colegio" value="${E(RG.otroTxt)}" oninput="RG.otroTxt=this.value"></label>`:`<label class="text-sm block">Colegio<input id="colq" class="w-full border rounded-lg p-2 mt-1" placeholder="Escribe para buscar tu colegio…" ${RG.mun?'':'disabled'} value="${E(RG.q)}" oninput="RG.q=this.value;paintCols()"><select id="colsel" class="w-full border rounded-lg p-2 mt-1" ${RG.mun?'':'disabled'} onchange="onColegio(this.value)">${colOpts()}</select></label>`}
+    ${!RG.otro&&RG.col&&(D.sedes||[]).length?`<label class="text-sm block">Sede educativa<select class="w-full border rounded-lg p-2 mt-1" onchange="RG.sede=this.value"><option value="">Elige tu sede…</option>${D.sedes.map(x=>`<option value="${x.id}" ${String(x.id)===String(RG.sede)?'selected':''}>${E(x.nombre)} · ${E(x.tipo_sede||'Sede')}${x.direccion?' · '+E(x.direccion):''}</option>`).join('')}</select><span class="text-xs text-slate-500">${D.sedes.length} sede(s) disponibles.</span></label>`:''}
     <label class="text-sm flex items-center gap-2"><input type="checkbox" ${RG.otro?'checked':''} onchange="RG.otro=this.checked;render()"> Mi colegio no aparece en la lista</label>
     <div class="text-sm"><div class="font-semibold mb-1">Grados en los que dictas clase</div><div class="flex flex-wrap gap-3">${[6,7,8,9,10,11].map(g=>`<label class="flex items-center gap-2"><input type="checkbox" ${RG.gs.includes(g)?'checked':''} onchange="togG(${g},this.checked)"> ${g}°</label>`).join('')}</div></div>
     ${RG.gs.map(g=>`<label class="text-sm block">Cursos de ${g}° (separados por coma, ej.: A, B, C o 901, 902)<input class="w-full border rounded-lg p-2 mt-1" value="${E(RG.cur[g]||'')}" oninput="RG.cur[${g}]=this.value"></label>`).join('')}
