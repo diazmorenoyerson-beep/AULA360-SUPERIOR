@@ -233,11 +233,18 @@ window.SABER={
   curso(id,on){Z.f.c=on?[...new Set([...Z.f.c,id])]:Z.f.c.filter(x=>x!==id)},
   exportar(id){
     const sim=Z.sims.find(x=>x.id===id);if(!sim)return;
-    const rows=[['Estudiante','Curso','Sesiones presentadas','Intentos','Lectura Crítica','Matemáticas','Sociales y Ciudadanas','Ciencias Naturales','Inglés','Global estimado / 500']];
+    const rows=[['Estudiante','Curso','Estado','Sesiones presentadas','Intentos','Lectura Crítica','Matemáticas','Sociales y Ciudadanas','Ciencias Naturales','Inglés','Global estimado / 500']];
     const grouped={};Z.att.filter(a=>a.sim_id===id).forEach(a=>{(grouped[a.user_id]=grouped[a.user_id]||[]).push(a)});
+    const targets=Z.targets.filter(t=>t.sim_id===id),courseIds=[...new Set(targets.map(t=>t.course_id))];
+    const students=Object.values(Z.names).filter(p=>p.role==='est'&&courseIds.includes(p.course_id));
     const courseName=cid=>{const c=(D.courses||[]).find(x=>x.id===cid);return c?c.grade+'° '+c.name:'Curso sin identificar'};
-    Object.entries(grouped).forEach(([uid,list])=>{const p=Z.names[uid]||{},cb=combinar(list);rows.push([p.full_name||'Estudiante',courseName(p.course_id),new Set(list.map(x=>x.sesion)).size,list.length,...AREAS.map(a=>cb.areas[a]&&cb.areas[a].t?pct(cb.areas[a].c,cb.areas[a].t):''),cb.global??''])});
-    const csv='\uFEFF'+rows.map(row=>row.map(v=>'\"'+String(v??'').replace(/\"/g,'\"\"')+'\"').join(';')).join('\r\n');
+    const expected=sim.modo==='sesion1'?[1]:sim.modo==='sesion2'?[2]:[1,2];
+    students.forEach(p=>{
+      const list=grouped[p.id]||[],cb=list.length?combinar(list):{areas:{},global:''},seen=new Set(list.map(x=>x.sesion));
+      const status=!list.length?'Sin iniciar':expected.every(x=>seen.has(x))?'Completo':'Incompleto';
+      rows.push([p.full_name||'Estudiante',courseName(p.course_id),status,seen.size,list.length,...AREAS.map(a=>cb.areas[a]&&cb.areas[a].t?pct(cb.areas[a].c,cb.areas[a].t):''),cb.global??'']);
+    });
+    const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download='AULA360_resultados_'+String(sim.title||'simulacro').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
   },
