@@ -47,7 +47,7 @@ function cuerpoItem(it,i){
   const completo=ex&&ex.paginas.size>=r.conImagen&&r.conImagen>0&&ex.paginasOk;
   const mat=`<select class="border rounded-lg p-2" ${ex?'disabled':''} onchange="BANCO.setMateria(${i},this.value)">${B.materias.map(m=>`<option ${m===it.materia?'selected':''}>${E(m)}</option>`).join('')}${B.materias.includes(it.materia)?'':`<option selected>${E(it.materia)}</option>`}</select>`;
   const componentes=['Lectura Crítica','Matemáticas','Sociales y Ciudadanas','Ciencias Naturales','Inglés'];
-  const comp=`<select class="border rounded-lg p-2 w-full" ${ex?'disabled':''} onchange="BANCO.setComponente(${i},this.value)"><option value="">Sin clasificar en Saber 11</option>${componentes.map(x=>`<option value="${E(x)}" ${it.componente===x?'selected':''}>${E(x)}</option>`).join('')}</select>`;
+  const comp=`<select class="border rounded-lg p-2 w-full" onchange="BANCO.setComponente(${i},this.value)"><option value="">Sin clasificar en Saber 11</option>${componentes.map(x=>`<option value="${E(x)}" ${it.componente===x?'selected':''}>${E(x)}</option>`).join('')}</select>`;
   const avisos=P.avisos.concat(P.notas);
   const informe=it.informe?`<div class="text-sm bq-mt">${it.informe}</div>`:'';
   const estado=it.estado==='subiendo'?`<div class="bq-mt"><div class="bq-barra"><div id="bq_b${i}"></div></div><p class="text-xs bq-mt" id="bq_t${i}">Preparando…</p></div>`
