@@ -101,6 +101,8 @@ async function borrar(id){
 }
 /* ---------- utilidades de lectura de imágenes ---------- */
 function calSleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+// Los documentos se imprimen en burbujas numéricas; comparar solo dígitos evita fallos por puntos, espacios o guiones.
+function calNormDoc(s){return String(s||'').replace(/\\D/g,'').replace(/^0+/,'')}
 async function calImg(file){
   let bmp=null,url=null;
   try{
@@ -157,7 +159,7 @@ async function calStart(){
     try{const im=await j.get(),r=OMR.grade(im.data,im.w,im.h,L);
       if(r.error){it.status='err';it.err=r.error}
       else{it.status='ok';it.res=r.res;it.read=r.id||{};
-        const d=norm(it.read.doc);it.st=d?(Z.est.find(s=>norm(s.document)===d)||null):null;
+        const d=calNormDoc(it.read.doc);it.st=d?(Z.est.find(s=>calNormDoc(s.document)===d)||null):null;
         it.ver=it.read.ver;it.warn=it.read.ver&&it.read.ver!=='ABC'[C.cuad-1]?'La hoja dice cuadernillo '+it.read.ver+' pero elegiste '+'ABC'[C.cuad-1]:''}
     }catch(x){it.status='err';it.err=(x&&x.message)||'No se pudo leer esta foto.'}
     R();await calSleep(30);
@@ -179,7 +181,7 @@ async function calSave(){
   for(const it of C.items){
     if(it.status!=='ok'){invalid.push(it.name+': '+(it.err||'no se pudo procesar'));continue}
     if(!it.st){invalid.push(it.name+': no se identificó un estudiante');continue}
-    const docRead=norm(it.read&&it.read.doc),docRoster=norm(it.st.document);
+    const docRead=calNormDoc(it.read&&it.read.doc),docRoster=calNormDoc(it.st.document);
     if(!it.read||it.read.ver!==expected){invalid.push(it.name+': versión no confirmada o distinta');continue}
     if(!docRead||!docRoster||docRead!==docRoster){invalid.push(it.name+': documento leído no coincide con el estudiante asignado');continue}
     if(m.has(it.st.id)){duplicates.push(it.st.full_name);continue}
