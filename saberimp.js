@@ -102,7 +102,7 @@ async function borrar(id){
 /* ---------- utilidades de lectura de imágenes ---------- */
 function calSleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 // Los documentos se imprimen en burbujas numéricas; comparar solo dígitos evita fallos por puntos, espacios o guiones.
-function calNormDoc(s){return String(s||'').replace(/\\D/g,'').replace(/^0+/,'')}
+function calNormDoc(s){return String(s||'').replace(/\D/g,'').replace(/^0+/,'')}
 async function calImg(file){
   let bmp=null,url=null;
   try{
