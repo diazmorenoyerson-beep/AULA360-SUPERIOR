@@ -12,7 +12,7 @@ Esta auditoría no ejecutó escrituras ni modificó la base de datos.
 - Tablas públicas existentes en Supabase: 49.
 - Referencias de tabla del frontend que no existen actualmente: 23.
 - Funciones RPC esperadas por el frontend: 51.
-- Funciones RPC esperadas que no existen actualmente: 20.
+- Funciones RPC esperadas que no existen actualmente: 21.
 - Migraciones registradas por Supabase: 4.
 
 ### Tablas del frontend pendientes
