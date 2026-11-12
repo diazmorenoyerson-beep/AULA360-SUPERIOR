@@ -50,9 +50,11 @@ async function load(){
     Z.att=ids.length?await todos(()=>sb.from('saber_attempts').select('id,sim_id,user_id,sesion,por_area,correct,total,seconds_used,auto,created_at').in('sim_id',ids).order('created_at',{ascending:false})):[];
     const r=await sb.rpc('saber_disponibilidad');Z.disp=r.error?[]:(r.data||[]);
     const uids=[...new Set(Z.att.map(a=>a.user_id))],courseIds=[...new Set(Z.targets.map(t=>t.course_id))];Z.names={};Z.rosterLoaded=false;
-    for(let i=0;i<uids.length;i+=100){ok(await sb.from('profiles').select('id,full_name,course_id,role').in('id',uids.slice(i,i+100))).forEach(p=>{Z.names[p.id]=p})}
-    for(let i=0;i<courseIds.length;i+=50){ok(await todos(()=>sb.from('profiles').select('id,full_name,course_id,role').eq('role','est').in('course_id',courseIds.slice(i,i+50)))).forEach(p=>{Z.names[p.id]=p})}
-    Z.rosterLoaded=true;
+    try{
+      for(let i=0;i<uids.length;i+=100){ok(await sb.from('profiles').select('id,full_name,course_id,role').in('id',uids.slice(i,i+100))).forEach(p=>{Z.names[p.id]=p})}
+      for(let i=0;i<courseIds.length;i+=50){ok(await todos(()=>sb.from('profiles').select('id,full_name,course_id,role').eq('role','est').in('course_id',courseIds.slice(i,i+50)))).forEach(p=>{Z.names[p.id]=p})}
+      Z.rosterLoaded=true;
+    }catch(e){console.warn('Saber 11: no fue posible cargar la matrícula asignada',e);Z.rosterLoaded=false;}
   }else{
     Z.sims=ok(await sb.from('saber_sims').select('*').eq('active',true).order('created_at',{ascending:false}));
     const ids=Z.sims.map(s=>s.id);
@@ -233,6 +235,7 @@ window.SABER={
   curso(id,on){Z.f.c=on?[...new Set([...Z.f.c,id])]:Z.f.c.filter(x=>x!==id)},
   exportar(id){
     const sim=Z.sims.find(x=>x.id===id);if(!sim)return;
+    if(!Z.rosterLoaded){toast('⚠️','Listado no disponible','No se exportó el CSV para evitar omitir estudiantes pendientes. Actualiza los resultados e inténtalo de nuevo.');return}
     const rows=[['Estudiante','Curso','Estado','Sesiones presentadas','Intentos','Lectura Crítica','Matemáticas','Sociales y Ciudadanas','Ciencias Naturales','Inglés','Global estimado / 500']];
     const grouped={};Z.att.filter(a=>a.sim_id===id).forEach(a=>{(grouped[a.user_id]=grouped[a.user_id]||[]).push(a)});
     const targets=Z.targets.filter(t=>t.sim_id===id),courseIds=[...new Set(targets.map(t=>t.course_id))];
