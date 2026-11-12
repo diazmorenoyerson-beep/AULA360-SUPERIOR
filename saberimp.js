@@ -181,6 +181,8 @@ async function calSave(){
   for(const it of C.items){
     if(it.status!=='ok'){invalid.push(it.name+': '+(it.err||'no se pudo procesar'));continue}
     if(!it.st){invalid.push(it.name+': no se identificó un estudiante');continue}
+    const lectura=evalIt(it);
+    if(lectura.rev>0){invalid.push(it.name+': '+lectura.rev+' marca(s) dudosa(s) requieren revisión; vuelve a escanear la hoja con mayor nitidez. No se calificará como blanco automáticamente.');continue}
     const docRead=calNormDoc(it.read&&it.read.doc),docRoster=calNormDoc(it.st.document);
     if(!it.read||it.read.ver!==expected){invalid.push(it.name+': versión no confirmada o distinta');continue}
     if(!docRead||!docRoster||docRead!==docRoster){invalid.push(it.name+': documento leído no coincide con el estudiante asignado');continue}
