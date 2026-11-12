@@ -97,7 +97,8 @@ function cuerpoItem(it,i){
     :it.estado==='hecho'?`${informe}<div class="bqp-mt">${btn(`BQP.quitar(${i})`,'Quitar de la lista')}</div>`
     :`${informe}<div class="bqp-mt flex flex-wrap gap-2 items-center">${completo?'<span class="text-sm bqp-ok">✅ Todas estas preguntas ya están en el banco.</span>':btn(`BQP.subir(${i})`,ya?'🔁 Completar lo que falta':'⬆️ Subir como borrador',VERDE)}${btn(`BQP.quitar(${i})`,'Quitar de la lista')}</div>`;
   return`<div class="font-semibold">${esc(D.materia)} · ${n} preguntas separadas</div><div class="text-xs text-slate-500">Archivo: ${esc(it.nombre)} · ${mb(it.tam)} · fuente: ${esc(D.fuente||'—')}</div>
-    <div class="grid sm:grid-cols-3 gap-2 bqp-mt text-sm"><div><b>${conClave}</b> con clave de respuesta</div><div><b>${limpias}</b> sin ninguna alerta (se podrán publicar)</div><label>Grado <select class="border rounded-lg p-2" ${ya?'disabled':''} onchange="BQP.setGrado(${i},this.value)">${[9,10,11].map(g=>`<option ${g===it.grado?'selected':''}>${g}</option>`).join('')}</select></label></div>
+    <div class="grid sm:grid-cols-2 gap-2 bqp-mt text-sm"><label>Componente Saber 11 <select class="border rounded-lg p-2 w-full" ${ya?'disabled':''} onchange="BQP.setSubject(${i},this.value)"><option value="">Selecciona el componente…</option>${['Lectura Crítica','Matemáticas','Sociales y Ciudadanas','Ciencias Naturales','Inglés'].map(x=>`<option value="${esc(x)}" ${it.subject===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label><label>Grado <select class="border rounded-lg p-2 w-full" ${ya?'disabled':''} onchange="BQP.setGrado(${i},this.value)">${[9,10,11].map(g=>`<option ${g===it.grado?'selected':''}>${g}</option>`).join('')}</select></label><div><b>${conClave}</b> con clave de respuesta</div><div><b>${limpias}</b> sin ninguna alerta (se podrán publicar)</div></div>
+    <p class="text-xs text-slate-500 bqp-mt">La materia original del archivo se conserva como fuente; las preguntas se guardan con el componente elegido para que los simulacros las encuentren.</p>
     ${motivos?`<p class="text-xs bqp-av bqp-mt">Se quedarán en borrador: ${esc(motivos)}.</p>`:''}
     ${ya?`<p class="text-xs bqp-av bqp-mt">Ya hay ${ya} de estas preguntas en el banco; solo se suben las que faltan.</p>`:''}
     ${D.avisos.length?`<div class="text-xs bqp-av bqp-mt">${D.avisos.slice(0,5).map(esc).join('<br>')}</div>`:''}${estado}`;
@@ -122,7 +123,8 @@ function view(){
 
 /* ---------- subir ---------- */
 async function subirItem(i){
-  const it=Q.items[i],D=it.datos,mat=D.materia,fuente=D.fuente;
+  const it=Q.items[i],D=it.datos,mat=it.subject,fuente=D.fuente;
+  if(!['Lectura Crítica','Matemáticas','Sociales y Ciudadanas','Ciencias Naturales','Inglés'].includes(mat))throw new Error('Selecciona el componente Saber 11 correcto antes de cargar el paquete.');
   it.estado='subiendo';render();
   const prog=(t,p)=>{setT('bqp_t'+i,t);setB('bqp_b'+i,p)};
   const inf={imgNuevas:0,imgYa:0,imgMal:[],filas:0,claves:0};
@@ -201,6 +203,7 @@ window.BQP={
           it.F=envoltorio(zip);
           const datos=JSON.parse(await zip.file(nombre).async('string'));
           it.datos=validar(datos,r=>it.F.existe(raiz+r));
+          it.subject=['Lectura Crítica','Matemáticas','Sociales y Ciudadanas','Ciencias Naturales','Inglés'].includes(it.datos.materia)?it.datos.materia:'';
           it.datos.preguntas.forEach(p=>{if(p.imagen)p.imagen=raiz+p.imagen});
           // cuántas ya están en la base
           let ya=0;
@@ -212,6 +215,7 @@ window.BQP={
     })();
   },
   setGrado(i,v){Q.items[i].grado=parseInt(v,10)||11},
+  setSubject(i,v){Q.items[i].subject=v},
   quitar(i){Q.items.splice(i,1);render()},
   async subir(i){try{await subirItem(i)}catch(e){const it=Q.items[i];if(it)it.estado='listo';err(e);render()}},
   async publicar(materia){
