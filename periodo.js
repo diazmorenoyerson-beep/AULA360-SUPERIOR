@@ -13,7 +13,7 @@ async function load(){
     const r=await sb.from('periodo_pruebas').select('id,titulo,asignatura,periodo,minutos,max_intentos,abre,cierra').eq('estado','publicada').order('created_at',{ascending:false});
     if(r.error)throw r.error;Z.lista=r.data||[];
     const a=await sb.from('periodo_intentos').select('prueba_id,score,correct,total,created_at').eq('user_id',M.id);
-    Z.mios=a.data||[];return;
+    if(a.error)throw a.error;Z.mios=a.data||[];return;
   }
   const r=await sb.from('periodo_pruebas').select('*,periodo_targets(course_id),periodo_items(count)').order('created_at',{ascending:false});
   if(r.error)throw r.error;Z.lista=r.data||[];
@@ -48,12 +48,21 @@ async function guardar(publicar){
   const v=validar();if(v)return toast('⚠️','Falta algo',v);
   if(publicar&&!Z.f.cursos.length)return toast('⚠️','Elige los cursos','Marca los cursos que la presentarán.');
   const f=Z.f,qs=seleccionadas();
-  const r=await sb.from('periodo_pruebas').insert({titulo:f.titulo.trim(),asignatura:f.asig,grado:11,periodo:+f.periodo,minutos:+f.min,max_intentos:+f.intentos,abre:f.abre?new Date(f.abre).toISOString():null,cierra:f.cierra?new Date(f.cierra).toISOString():null,estado:publicar?'publicada':'borrador'}).select('id').single();
+  // El grado se deriva del banco real y se contrasta con los cursos; nunca se fija artificialmente en 11.
+  const qr=await sb.from('questions').select('id,grade').in('id',qs.map(q=>q.id));
+  if(qr.error)return err(qr.error);
+  const gradosPreguntas=[...new Set((qr.data||[]).map(q=>Number(q.grade)).filter(Number.isFinite))];
+  if(gradosPreguntas.length!==1)return toast('⚠️','Grados incompatibles','Selecciona preguntas de un solo grado para esta prueba.');
+  const grado=gradosPreguntas[0];
+  const cursosSel=(D.courses||[]).filter(c=>f.cursos.includes(c.id));
+  if(publicar&&cursosSel.some(c=>Number(c.grade)!==grado))return toast('⚠️','El grado no coincide','Las preguntas seleccionadas son de '+grado.+'°. Elige cursos del mismo grado.');
+  const r=await sb.from('periodo_pruebas').insert({titulo:f.titulo.trim(),asignatura:f.asig,grado,periodo:+f.periodo,minutos:+f.min,max_intentos:+f.intentos,abre:f.abre?new Date(f.abre).toISOString():null,cierra:f.cierra?new Date(f.cierra).toISOString():null,estado:'borrador'}).select('id').single();
   if(r.error)return err(r.error);
   const id=r.data.id;
   const it=await sb.from('periodo_items').insert(qs.map((q,i)=>({prueba_id:id,pos:i+1,question_id:q.id})));
   if(it.error){await sb.from('periodo_pruebas').delete().eq('id',id);return err(it.error)}
-  if(f.cursos.length){const t=await sb.from('periodo_targets').insert(f.cursos.map(c=>({prueba_id:id,course_id:c})));if(t.error)return err(t.error)}
+  if(f.cursos.length){const t=await sb.from('periodo_targets').insert(f.cursos.map(c=>({prueba_id:id,course_id:c})));if(t.error){await sb.from('periodo_pruebas').delete().eq('id',id);return err(t.error)}}
+  if(publicar){const pub=await sb.from('periodo_pruebas').update({estado:'publicada'}).eq('id',id);if(pub.error)return err(pub.error)}
   toast('✅',publicar?'Prueba publicada':'Borrador guardado',f.titulo);
   Z.f=nuevoF();Z.banco=[];Z.sel=new Set();await load();rerender();
 }
@@ -158,6 +167,7 @@ const api={
     if(Z.det&&Z.det.id===id){Z.det=null;return rerender()}
     Z.det={id};rerender();
     const r=await sb.from('periodo_intentos').select('correct,total,score,created_at,profiles(full_name)').eq('prueba_id',id).order('created_at',{ascending:false});
+    if(r.error){Z.det=null;rerender();return err(r.error)}
     Z.det={id,rows:r.data||[]};rerender();
   },
   async empezar(id){
