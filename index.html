@@ -238,10 +238,18 @@ async function calPick(id){
   CAL.exams=ex.data.sort((a,b)=>String(a.roster?.full_name).localeCompare(String(b.roster?.full_name),'es')||a.version-b.version);
   const rs=await sb.from('print_results').select('exam_id').eq('job_id',id);CAL.done=new Set((rs.data||[]).map(r=>r.exam_id));render()}
 async function calImg(file){
-  let bmp;try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'})}catch(e){bmp=await new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>ok(im);im.onerror=()=>no(new Error('No se pudo abrir la imagen. Usa fotos JPG o PNG.'));im.src=u})}
-  const w0=bmp.width||bmp.naturalWidth,h0=bmp.height||bmp.naturalHeight,k=Math.min(1,2800/Math.max(w0,h0)),w=Math.round(w0*k),h=Math.round(h0*k);
-  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,w,h);
-  return{data:x.getImageData(0,0,w,h).data,w,h}}
+  let bmp=null,url=null;
+  try{
+    try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'})}
+    catch(e){url=URL.createObjectURL(file);bmp=await new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=()=>no(new Error('No se pudo abrir la imagen. Usa fotos JPG o PNG.'));im.src=url})}
+    const w0=bmp.width||bmp.naturalWidth,h0=bmp.height||bmp.naturalHeight;
+    if(!w0||!h0)throw new Error('La imagen no tiene dimensiones válidas.');
+    const k=Math.min(1,2800/Math.max(w0,h0)),w=Math.max(1,Math.round(w0*k)),h=Math.max(1,Math.round(h0*k));
+    const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});
+    if(!x)throw new Error('El navegador no pudo preparar la imagen.');
+    x.drawImage(bmp,0,0,w,h);return{data:x.getImageData(0,0,w,h).data,w,h};
+  }finally{if(bmp&&typeof bmp.close==='function')bmp.close();if(url)URL.revokeObjectURL(url)}
+}
 async function calPdfJobs(f){
   await loadScript(LIB.pdf);pdfjsLib.GlobalWorkerOptions.workerSrc=LIB.pdfw;
   const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise,jobs=[];
