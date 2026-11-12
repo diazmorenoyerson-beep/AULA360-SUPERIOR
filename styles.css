@@ -240,3 +240,22 @@ body{background:var(--a360-bg)!important;color:var(--a360-ink)!important;font-fa
 @media (prefers-reduced-motion:reduce){
   *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+
+/* AULA360 — ajustes finales de accesibilidad, formularios y móviles */
+:focus-visible{outline:3px solid #818cf8!important;outline-offset:3px!important}
+button,a,input,select,textarea{transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+button:not(:disabled):active{transform:translateY(1px)}
+input,select,textarea{max-width:100%}
+input:focus,select:focus,textarea:focus{border-color:#6366f1!important;box-shadow:0 0 0 3px rgba(99,102,241,.13)!important}
+button:disabled{opacity:.55;cursor:not-allowed}
+img{max-width:100%}
+@media(max-width:640px){
+  #app{padding:14px 12px calc(24px + env(safe-area-inset-bottom))!important}
+  #app .overflow-x-auto{-webkit-overflow-scrolling:touch}
+  #app button{min-height:40px}
+  #app input,#app select,#app textarea{font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
