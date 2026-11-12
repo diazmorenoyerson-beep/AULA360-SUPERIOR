@@ -7,7 +7,7 @@ let Z={subs:[],f:null,m:'uno',txt:'',prev:[],mis:0};
 const nuevo=()=>({subject:Z.f?Z.f.subject:'',grade:Z.f?Z.f.grade:'',competency:'',stimulus_title:'',stimulus_content:'',body:'',options:['','','',''],correct:0,explanation:''});
 async function load(){
   const s=await sb.from('asignaturas').select('nombre,banco_subject').order('nombre');
-  const seen=new Set();const mias=M.banco_subjects||[];Z.subs=(s.data||[]).filter(x=>x.banco_subject&&!seen.has(x.banco_subject)&&seen.add(x.banco_subject)&&(M.is_admin||mias.includes(x.banco_subject)));
+  const seen=new Set();const mias=M.asignaturas||[];Z.subs=(s.data||[]).filter(x=>x.banco_subject&&!seen.has(x.banco_subject)&&seen.add(x.banco_subject)&&(M.is_admin||mias.includes(x.banco_subject)));
   if(!Z.f)Z.f=nuevo();
   const c=await sb.from('questions').select('id',{count:'exact',head:true}).eq('autor_id',M.id);Z.mis=c.count||0;
 }
