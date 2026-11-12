@@ -99,6 +99,44 @@ async function borrar(id){
   const r=await sb.from('saber_imp').delete().eq('id',id);if(r.error)return err(r.error);
   if(Z.sel===id)Z.sel=null;await load(Z.mode);R();
 }
+/* ---------- utilidades de lectura de imágenes ---------- */
+function calSleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+async function calImg(file){
+  let bmp=null,url=null;
+  try{
+    if(typeof createImageBitmap==='function')bmp=await createImageBitmap(file,{imageOrientation:'from-image'});
+    else{
+      url=URL.createObjectURL(file);
+      bmp=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(new Error('No se pudo abrir la imagen. Usa JPG o PNG.'));im.src=url});
+    }
+    const w0=bmp.width||bmp.naturalWidth,h0=bmp.height||bmp.naturalHeight;
+    if(!w0||!h0)throw new Error('La imagen no tiene dimensiones válidas.');
+    const k=Math.min(1,2800/Math.max(w0,h0)),w=Math.round(w0*k),h=Math.round(h0*k);
+    const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    if(!ctx)throw new Error('El navegador no pudo preparar la imagen.');
+    ctx.drawImage(bmp,0,0,w,h);
+    return{data:ctx.getImageData(0,0,w,h).data,w,h};
+  }finally{if(bmp&&typeof bmp.close==='function')bmp.close();if(url)URL.revokeObjectURL(url)}
+}
+async function calPdfJobs(file){
+  const LIBPDF='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+  const LIBPDFW='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  if(typeof pdfjsLib==='undefined')await loadScript(LIBPDF);
+  if(typeof pdfjsLib==='undefined')throw new Error('No se pudo cargar el lector de PDF.');
+  pdfjsLib.GlobalWorkerOptions.workerSrc=LIBPDFW;
+  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise,jobs=[];
+  if(!pdf.numPages)throw new Error('El PDF no contiene páginas.');
+  for(let page=1;page<=pdf.numPages;page++)jobs.push({name:file.name+' (página '+page+')',get:async()=>{
+    const pg=await pdf.getPage(page),v0=pg.getViewport({scale:1}),scale=2800/Math.max(v0.width,v0.height),vp=pg.getViewport({scale});
+    const canvas=document.createElement('canvas');canvas.width=Math.round(vp.width);canvas.height=Math.round(vp.height);
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error('No se pudo preparar la página del PDF.');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    await pg.render({canvasContext:ctx,viewport:vp}).promise;
+    return{data:ctx.getImageData(0,0,canvas.width,canvas.height).data,w:canvas.width,h:canvas.height};
+  }});
+  return jobs;
+}
 /* ---------- calificar por foto ---------- */
 async function calStart(){
   const C=Z.cal;if(C.busy)return;
@@ -132,9 +170,18 @@ function evalIt(it){
 }
 function calAssign(i,id){Z.cal.items[i].st=Z.est.find(s=>s.id===id)||null;R()}
 async function calSave(){
-  const m=new Map();
-  Z.cal.items.forEach(it=>{if(it.status==='ok'&&it.st)m.set(it.st.id,{roster_id:it.st.id,cuad:Z.cal.cuad,answers:evalIt(it).ans})});
-  if(!m.size)return toast('⚠️','Nada que guardar','Ninguna hoja está identificada con un estudiante.');
+  const C=Z.cal,cu=C.cuad,expected='ABC'[cu-1],m=new Map(),invalid=[],duplicates=[];
+  for(const it of C.items){
+    if(it.status!=='ok'||!it.st)continue;
+    const docRead=norm(it.read&&it.read.doc),docRoster=norm(it.st.document);
+    if(!it.read||it.read.ver!==expected){invalid.push(it.name+': versión no confirmada o distinta');continue}
+    if(!docRead||!docRoster||docRead!==docRoster){invalid.push(it.name+': documento leído no coincide con el estudiante asignado');continue}
+    if(m.has(it.st.id)){duplicates.push(it.st.full_name);continue}
+    m.set(it.st.id,{roster_id:it.st.id,cuad:cu,answers:evalIt(it).ans});
+  }
+  if(invalid.length)return toast('⚠️','Hay hojas por corregir',invalid.slice(0,3).join('; ')+(invalid.length>3?' y '+(invalid.length-3)+' más.':'. No se guardó ninguna hoja.'));
+  if(duplicates.length)return toast('⚠️','Hojas duplicadas','Hay más de una hoja del mismo estudiante y cuadernillo en esta carga. Retira los duplicados antes de guardar.');
+  if(!m.size)return toast('⚠️','Nada que guardar','No hay hojas con estudiante, documento y versión verificados.');
   const r=await sb.rpc('saber_imp_guardar',{p_imp:Z.sel,p_rows:[...m.values()]});
   if(r.error)return err(r.error);
   toast('💾','Resultados guardados',r.data+' hoja(s).');Z.res=null;await resultados(true);
