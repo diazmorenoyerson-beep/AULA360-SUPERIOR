@@ -55,7 +55,7 @@ async function guardar(publicar){
   if(gradosPreguntas.length!==1)return toast('⚠️','Grados incompatibles','Selecciona preguntas de un solo grado para esta prueba.');
   const grado=gradosPreguntas[0];
   const cursosSel=(D.courses||[]).filter(c=>f.cursos.includes(c.id));
-  if(publicar&&cursosSel.some(c=>Number(c.grade)!==grado))return toast('⚠️','El grado no coincide','Las preguntas seleccionadas son de '+grado.+'°. Elige cursos del mismo grado.');
+  if(publicar&&cursosSel.some(c=>Number(c.grade)!==grado))return toast('⚠️','El grado no coincide','Las preguntas seleccionadas son de '+grado+'°. Elige cursos del mismo grado.');
   const r=await sb.from('periodo_pruebas').insert({titulo:f.titulo.trim(),asignatura:f.asig,grado,periodo:+f.periodo,minutos:+f.min,max_intentos:+f.intentos,abre:f.abre?new Date(f.abre).toISOString():null,cierra:f.cierra?new Date(f.cierra).toISOString():null,estado:'borrador'}).select('id').single();
   if(r.error)return err(r.error);
   const id=r.data.id;
