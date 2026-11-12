@@ -1,0 +1,16 @@
+AULA360 — PAQUETE DE REDISEÑO VISUAL PARA CLAUDE
+
+CONTENIDO
+- PROMPT_MAESTRO_PARA_CLAUDE.md: instrucciones completas. Léelo y pégalo en Claude después de adjuntar ESTE ZIP.
+- El resto de los archivos en la raíz: código fuente original de AULA360, sin cambios en esta copia de trabajo.
+- REFERENCIAS_VISUALES/Concepto_visual_AULA360.png: referencia conceptual de estilo. NO es una captura real ni una especificación pixel-perfect.
+- DOCUMENTACION/CONTROL_DE_CALIDAD.md: lista de comprobación de conservación y pruebas.
+
+INSTRUCCIONES
+1. Sube a Claude este ZIP completo.
+2. Pega el contenido de PROMPT_MAESTRO_PARA_CLAUDE.md.
+3. Pide que inspeccione y trabaje sobre una copia del proyecto, nunca sobre el único original.
+4. Exige que entregue el proyecto completo actualizado en ZIP, un resumen de cambios y resultados de pruebas.
+
+IMPORTANTE
+Este paquete contiene el código fuente original recibido para que Claude lo inspeccione y lo rediseñe. No se garantiza que el proyecto haya sido probado en un entorno real ni que tenga credenciales/configuración externa incluidas. No compartas secretos ni claves privadas.

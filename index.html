@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AULA360 · Aprende, practica, evalúa</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#12345A">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="AULA360">
+<link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
+<link rel="stylesheet" href="styles.css?v=3">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="supabase-config.js"></script>
+<style>body{background:#f1f5f9;color:#0f172a;font-family:system-ui,sans-serif}.on{background:#4f46e5;color:#fff}.pop{animation:pop .4s ease}@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+#printarea{display:none}
+@media print{body>*:not(#printarea){display:none!important}#printarea{display:block!important;background:#fff}@page{size:A4;margin:12mm}}
+#printarea{font-family:Arial,Helvetica,sans-serif;color:#000;font-size:10.5pt}
+#printarea .pg{page-break-after:always}
+#printarea .pg:last-child{page-break-after:auto}
+#printarea .lh{display:flex;align-items:center;gap:10px;border-bottom:2px solid #000;padding-bottom:4px;margin-bottom:6px}
+#printarea .lh .t{flex:1;text-align:center;line-height:1.25;font-size:9pt}
+#printarea .lh .l1{font-weight:bold;font-size:12pt}
+#printarea .ti{font-weight:bold;font-size:11pt;margin:4px 0}
+#printarea .idt{width:100%;border-collapse:collapse;margin:4px 0;font-size:9.5pt}
+#printarea .idt td{border:1px solid #000;padding:3px 6px}
+#printarea .in{font-size:8.5pt;margin:4px 0 8px}
+#printarea .q{page-break-inside:avoid;margin:0 0 9px}
+#printarea .q img{max-width:100%;height:auto;margin-top:3px}
+#printarea .st{border:1px solid #666;padding:5px 8px;margin:3px 0;font-size:9.5pt}
+#printarea .op{margin-left:14px}
+#printarea .sheet{position:relative;width:186mm;height:273mm;margin:0 auto}
+#printarea .mk{position:absolute;width:8mm;height:8mm;background:#000}
+#printarea .shh{position:absolute;left:12mm;right:12mm;top:10mm}
+#printarea .gl{position:absolute;width:5mm;text-align:center;font-size:8pt;font-weight:bold}
+#printarea .gn{position:absolute;width:8mm;text-align:right;font-size:8pt;line-height:5mm}
+#printarea .bb{position:absolute;width:5mm;height:5mm;border:.45mm solid #000;border-radius:50%;box-sizing:border-box}
+#printarea table.kt{width:100%;border-collapse:collapse;font-size:9pt}
+#printarea table.kt td,#printarea table.kt th{border:1px solid #000;padding:2px 5px;text-align:left}
+</style>
+</head><body>
+<div id="app" class="max-w-6xl mx-auto p-3 sm:p-5"><div class="max-w-md mx-auto mt-10 bg-white rounded-2xl shadow p-6 space-y-3"><img src="aula360-logo-vertical.png" alt="AULA360 · Aprende, practica, evalúa" style="display:block;margin:0 auto;width:min(230px,70%);height:auto;object-fit:contain"><h1 class="sr-only" style="position:absolute;left:-9999px">AULA360</h1><p class="text-center text-sm text-slate-500">Clases virtuales y simulacros Pre-ICFES</p><div class="flex gap-2"><button onclick="setMode('login')" class="flex-1 py-2 rounded-lg text-sm on">Entrar</button><button onclick="setMode('register')" class="flex-1 py-2 rounded-lg text-sm bg-slate-200">Soy estudiante</button><button onclick="setMode('docente')" class="flex-1 py-2 rounded-lg text-sm bg-slate-200">Soy docente</button></div>
+  
+  <input id="em" type="email" class="w-full border rounded-lg p-2" placeholder="Correo"><input id="pw" type="password" class="w-full border rounded-lg p-2" placeholder="Contraseña (mín. 6)" onkeydown="if(event.key==='Enter')doAuth()">
+  <button onclick="doAuth()" class="w-full py-2 bg-indigo-600 text-white rounded-lg">Entrar</button>
+  <button onclick="resend()" class="w-full text-xs text-slate-500 underline">Reenviar correo de confirmación</button></div></div>
+<div id="toast" class="fixed top-4 right-4 z-50 space-y-2"></div>
+<script>
+let sb=supabase.createClient(window.AULA360_SUPABASE.url,window.AULA360_SUPABASE.publishableKey);
+const IMG=window.AULA360_SUPABASE.storage.questions;
+const LOGO=window.AULA360_SUPABASE.storage.schoolLogos;
+const MEDALS={first:['🥇','Primer Paso','Completar tu primer simulacro'],perfect:['🧠','Mente Brillante','100% de respuestas correctas'],clock:['⏱️','Contra el Reloj','Terminar con más de la mitad del tiempo restante'],streak:['🔥','Constante','Completar 3 simulacros'],high:['⭐','Alto Puntaje','Obtener 80 o más']};
+const isDir=()=>!!M&&(M.role==='rector'||M.role==='coordinador');
+const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0;
+const v=id=>document.getElementById(id)?.value?.trim()||'';
+const RG0=()=>({nm:'',tel:'',em:'',pw:'',dep:'',mun:'',col:'',otro:false,otroTxt:'',q:'',gs:[],cur:{},area:'',asg:[]});
+let M=null,tab='sim',S=null,RES=null,D={},timer=null,charts=[],chan=null,liveChan=null,authMode='login',QF={g:11,s:'',f:'all',p:0},SF={k:'simulacro',t:'',g:11,s:'',n:10,m:2,a:1,due:'',desc:'',cs:[]},CF={g:6,name:''},RF={c:'',f:'excel',txt:'',rows:[],skip:0,fname:''},RG=RG0(),ED={id:'',nm:'',tel:'',area:'',asg:[],gs:[]},PJ={c:'',t:'',s:'',n:10,v:3,d:'',st:'',ver:'',refs:[]},LT={l1:'',l2:'',l3:'',logo:''};
+
+function toast(ic,t,d){const e=document.createElement('div');e.className='pop bg-white border-l-4 border-amber-400 shadow-xl rounded-xl p-3 w-72 flex gap-3';e.innerHTML=`<div class="text-3xl">${ic}</div><div><div class="font-bold text-sm">${E(t)}</div><div class="text-xs text-slate-600">${E(d)}</div></div>`;document.getElementById('toast').appendChild(e);setTimeout(()=>e.remove(),6500)}
+const err=(e)=>toast('⚠️','Error',e?.message||String(e));
+
+/* ---------- Sesión ---------- */
+async function boot(){
+  if(location.hash.includes('error_code=')){
+    const p=new URLSearchParams(location.hash.slice(1));
+    history.replaceState(null,'',location.pathname);
+    const exp=p.get('error_code')==='otp_expired';
+    toast('⚠️',exp?'El enlace venció o ya se usó':'No se pudo verificar el enlace',exp?'Inicia sesión; si dice que falta confirmar, usa «Reenviar correo».':(p.get('error_description')||'').replace(/\+/g,' '));
+  }
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session){M=null;return render()}
+  const{data,error}=await sb.from('profiles').select('*').eq('id',session.user.id).single();
+  if(error)return err(error);
+  M=data;
+  if((M.role==='prof'||isDir())&&M.teacher_status!=='aprobado')return render();
+  if(!isDir())startLive();
+  if(session.user.user_metadata&&session.user.user_metadata.pw_initial===true&&M.role==='est')setTimeout(()=>{try{passModal();toast('🔑','Cambia tu contraseña','Tu contraseña inicial es tu documento. Elige una nueva para proteger tu cuenta.')}catch(x){}},700);
+  if(M.is_admin){const c=await sb.from('profiles').select('id',{count:'exact',head:true}).eq('role','prof').eq('teacher_status','pendiente');D.pend=c.count||0;const c2=await sb.from('profiles').select('id',{count:'exact',head:true}).in('role',['rector','coordinador']).eq('teacher_status','pendiente');D.pendDir=c2.count||0}
+  try{await loadMembrete()}catch(x){}
+  try{if(M.role!=='est'){const n=await sb.rpc('mensajes_pendientes');if(n.data>0)toast('✉️','Tienes '+n.data+(n.data===1?' mensaje nuevo':' mensajes nuevos'),'Ábrelos en Mensajes.')}}catch(x){}
+  await go(isDir()?'dcol':M.role==='prof'?'prof':'sim');
+}
+sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'){M=null;leaveChat();if(liveChan){sb.removeChannel(liveChan);liveChan=null}render()}});
+async function loadCat(){
+  if(D.areas)return;
+  const a=await sb.from('areas').select('nombre').order('nombre');D.areas=a.data||[];
+  const s=await sb.from('asignaturas').select('nombre,areas(nombre)').order('nombre');D.asigs=(s.data||[]).map(x=>({nombre:x.nombre,area:x.areas?.nombre}));
+}
+async function setMode(m){
+  authMode=m;
+  if(m==='docente'||m==='directivo'){
+    if(!D.deps){const r=await sb.from('departamentos').select('id,nombre').order('nombre');D.deps=r.data||[]}
+    await loadCat();
+    if(m==='directivo')await loadScript('colegio.js?v=9');
+  }
+  render();
+}
+async function onDep(id){
+  RG.dep=id;RG.mun='';RG.col='';RG.q='';D.muns=[];D.cols=[];
+  if(id){const r=await sb.from('municipios').select('id,nombre').eq('departamento_id',+id).order('nombre');D.muns=r.data||[]}
+  render();
+}
+async function onMun(id){
+  RG.mun=id;RG.col='';RG.q='';D.cols=[];
+  if(id){const r=await sb.from('colegios').select('id,nombre').eq('municipio_id',+id).order('nombre').limit(1000);D.cols=r.data||[]}
+  render();
+}
+const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function colOpts(){
+  const q=norm(RG.q);
+  return'<option value="">Elige tu colegio…</option>'+(D.cols||[]).filter(c=>!q||norm(c.nombre).includes(q)||String(c.id)===String(RG.col)).map(c=>`<option value="${c.id}" ${String(c.id)===String(RG.col)?'selected':''}>${E(c.nombre)}</option>`).join('');
+}
+function paintCols(){const s=document.getElementById('colsel');if(s)s.innerHTML=colOpts()}
+function togG(g,on){RG.gs=on?[...new Set([...RG.gs,g])].sort((a,b)=>a-b):RG.gs.filter(x=>x!==g);render()}
+function togA(n,on){RG.asg=on?[...new Set([...RG.asg,n])]:RG.asg.filter(x=>x!==n)}
+const parseCursos=t=>[...new Set(String(t||'').split(/[,;\n]+/).map(x=>x.trim().replace(/\s+/g,' ')).filter(Boolean))].slice(0,12);
+async function doDocente(){
+  const nm=(RG.nm||'').trim().replace(/\s+/g,' '),tel=(RG.tel||'').replace(/[^\d+]/g,''),em=(RG.em||'').trim().toLowerCase(),pw=RG.pw||'',otroTxt=(RG.otroTxt||'').trim();
+  if(nm.split(' ').length<2||nm.length<5)return toast('⚠️','Falta tu nombre','Escribe tu nombre y apellido.');
+  if(!/^\+?\d{7,15}$/.test(tel))return toast('⚠️','Teléfono no válido','Escribe tu número de celular, solo números.');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))return toast('⚠️','Correo no válido','Revisa tu correo electrónico.');
+  if(pw.length<6)return toast('⚠️','Contraseña muy corta','Usa mínimo 6 caracteres.');
+  if(!RG.dep||!RG.mun)return toast('⚠️','Falta la ubicación','Elige tu departamento y tu municipio.');
+  if(!RG.otro&&!RG.col)return toast('⚠️','Falta el colegio','Elige tu colegio o marca «Mi colegio no aparece».');
+  if(RG.otro&&otroTxt.length<3)return toast('⚠️','Falta el nombre del colegio','Escribe el nombre de tu colegio.');
+  if(!RG.gs.length)return toast('⚠️','Faltan los grados','Marca los grados en los que dictas clase.');
+  const cursos={};
+  for(const g of RG.gs){const l=parseCursos(RG.cur[g]);if(!l.length)return toast('⚠️','Faltan los cursos','Escribe los cursos de '+g+'°, por ejemplo: A, B, C.');cursos[g]=l}
+  if(!RG.area)return toast('⚠️','Falta el área','Elige tu área.');
+  if(!RG.asg.length)return toast('⚠️','Falta la asignatura','Marca la asignatura (o asignaturas) que dictas.');
+  const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{data:{account:'docente',full_name:nm,phone:tel,colegio_id:RG.otro?'':String(RG.col),school_other:RG.otro?otroTxt:'',cursos,area:RG.area,asignaturas:RG.asg}}});
+  if(error)return err(error);
+  RG=RG0();D.muns=[];D.cols=[];
+  if(!data.session){authMode='login';render();return toast('📧','Revisa tu correo','Confirma tu cuenta y luego inicia sesión.')}
+  boot();
+}
+async function doAuth(){
+  if(authMode==='docente')return doDocente();
+  if(authMode==='directivo'&&window.DIR)return DIR.doReg();
+  const email=v('em');let password=document.getElementById('pw')?.value||'';
+  const dc=(document.getElementById('dc')?.value||'').replace(/\D/g,'');
+  if(authMode==='register'){
+    if(dc.length<6)return toast('⚠️','Revisa tu documento','Escribe tu número de documento, solo con números (mínimo 6).');
+    password=dc;
+  }
+  if(!email||!password)return toast('⚠️','Faltan datos',authMode==='register'?'Escribe tu documento y tu correo.':'Escribe correo y contraseña.');
+  if(authMode==='login'){
+    const{error}=await sb.auth.signInWithPassword({email,password});
+    if(error){const m=(error.message||'').toLowerCase();return toast('⚠️','No se pudo entrar',m.includes('not confirmed')?'Tu correo aún no está confirmado. Usa «Reenviar correo de confirmación».':m.includes('invalid login')?'Correo o contraseña incorrectos.':error.message)}
+    return boot();
+  }
+  const full_name=v('nm'),grade=v('gr');
+  if(!full_name)return toast('⚠️','Falta tu nombre','Escribe tu nombre completo.');
+  const{data,error}=await sb.auth.signUp({email,password,options:{data:{full_name,grade,document:dc,pw_initial:true}}});
+  if(error){if((error.message||'').toLowerCase().includes('database error'))return toast('⚠️','No se pudo crear la cuenta','Ese documento o ese correo ya tienen una cuenta. Si ya te registraste, pulsa «Entrar»: tu contraseña es tu número de documento.');return err(error)}
+  if(!data.session){authMode='login';render();return toast('📧','Revisa tu correo','Abre el enlace más reciente y luego inicia sesión.')}
+  boot();
+}
+async function resend(){
+  const email=v('em');if(!email)return toast('⚠️','Falta el correo','Escribe tu correo arriba y vuelve a pulsar.');
+  const{error}=await sb.auth.resend({type:'signup',email});
+  if(error)return err(error);
+  toast('📧','Correo enviado','Usa solo el enlace más reciente, en el mismo navegador.');
+}
+function passModal(){
+  closePass();
+  const o=document.createElement('div');o.id='passbox';
+  o.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px';
+  o.innerHTML=`<div style="background:#fff;border-radius:16px;padding:20px;width:100%;max-width:360px;box-shadow:0 20px 40px rgba(0,0,0,.25)">
+  <h2 style="font-size:18px;font-weight:700;margin-bottom:4px">🔑 Cambiar contraseña</h2>
+  <p style="font-size:12px;color:#64748b;margin-bottom:12px">Mínimo 6 caracteres. Usa una que no sea fácil de adivinar.</p>
+  <input id="pw0" type="password" placeholder="Contraseña actual" autocomplete="current-password" style="width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;margin-bottom:8px">
+  <input id="pw1" type="password" placeholder="Contraseña nueva" autocomplete="new-password" style="width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;margin-bottom:8px">
+  <input id="pw2" type="password" placeholder="Repite la contraseña nueva" autocomplete="new-password" onkeydown="if(event.key==='Enter')savePass()" style="width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;margin-bottom:8px">
+  <div id="pwerr" style="color:#dc2626;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+  <div style="display:flex;gap:8px"><button onclick="closePass()" style="flex:1;padding:8px;border-radius:8px;background:#e2e8f0">Cancelar</button><button id="pwbtn" onclick="savePass()" style="flex:1;padding:8px;border-radius:8px;background:#4f46e5;color:#fff">Guardar</button></div></div>`;
+  document.body.appendChild(o);document.getElementById('pw0').focus();
+}
+function closePass(){const o=document.getElementById('passbox');if(o)o.remove()}
+async function savePass(){
+  const err=m=>{document.getElementById('pwerr').textContent=m};
+  const a=document.getElementById('pw0').value,b=document.getElementById('pw1').value,c=document.getElementById('pw2').value;
+  if(!a){return err('Escribe tu contraseña actual.')}
+  if(b.length<6){return err('La nueva contraseña debe tener mínimo 6 caracteres.')}
+  if(b!==c){return err('Las dos contraseñas nuevas no coinciden.')}
+  if(b===a){return err('La nueva contraseña debe ser distinta a la actual.')}
+  const btn=document.getElementById('pwbtn');btn.disabled=true;btn.textContent='Guardando…';err('');
+  try{
+    const {data:u}=await sb.auth.getUser();const email=u&&u.user&&u.user.email;
+    if(!email)throw new Error('No se pudo identificar tu sesión. Sal y vuelve a entrar.');
+    const chk=await sb.auth.signInWithPassword({email,password:a});
+    if(chk.error)throw new Error('La contraseña actual no es correcta.');
+    const r=await sb.auth.updateUser({password:b,data:{pw_initial:false}});
+    if(r.error)throw new Error(r.error.message);
+    closePass();toast('🔑','Contraseña cambiada','Úsala la próxima vez que entres.');
+  }catch(e){err(e.message||'No se pudo cambiar la contraseña.');btn.disabled=false;btn.textContent='Guardar'}
+}
+async function logout(){if(window.VC&&VC.on())return VC.salir();clearInterval(timer);S=null;await sb.auth.signOut()}
+
+/* ---------- Aviso de clase en vivo (toda la app) ---------- */
+function vLive(){
+  const c=D.cls||{};
+  if(!(c.is_live&&c.video_url)||S)return'';
+  return`<div class="flex flex-wrap items-center justify-between gap-2 rounded-xl p-3 mb-4 shadow" style="background:#fef2f2;border:1px solid #fecaca"><span class="text-sm"><span style="background:#dc2626;color:#fff;padding:1px 10px;border-radius:9999px">● EN VIVO</span> <b>${E(c.title||'Clase')}</b></span><a href="${E(c.video_url)}" target="_blank" rel="noopener noreferrer" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm">Unirme a la clase</a></div>`;
+}
+function paintLive(){const b=document.getElementById('livebar');if(b)b.innerHTML=vLive()}
+async function getCls(){let q=sb.from('class_settings').select('*');if(M.role==='prof')q=q.eq('teacher_id',M.id);const r=await q.maybeSingle();return r.data||{}}
+function clsEvent(p){const n=p.new;if(!n||!n.teacher_id)return false;if(M.role==='prof'&&n.teacher_id!==M.id)return false;D.cls=n;return true}
+async function startLive(){
+  D.cls=await getCls();paintLive();
+  if(!liveChan)liveChan=sb.channel('live').on('postgres_changes',{event:'*',schema:'public',table:'class_settings'},p=>{if(clsEvent(p))paintLive()}).subscribe();
+}
+
+/* ---------- Carga por pestaña ---------- */
+async function loadAvail(){
+  const{data,error}=await sb.rpc('avail_counts');if(error)throw error;
+  const av={};data.forEach(q=>{(av[q.grade]=av[q.grade]||{});av[q.grade][q.subject]=(av[q.grade][q.subject]||0)+Number(q.n)});D.avail=av;
+}
+async function loadCourses(){const c=await sb.from('courses').select('*').eq('teacher_id',M.id).order('grade').order('name');if(c.error)throw c.error;D.courses=c.data}
+function defLT(){const s=D.school||{},c=s.colegios,mu=c?.municipios;return{l1:c?.nombre||s.school_other||'',l2:mu?(mu.nombre+', '+(mu.departamentos?.nombre||'')):'',l3:'',logo:'',hoja:'',papel:'carta',mt:3.5,mb:2.5,ml:2}}
+const PAPEL={carta:[21.59,27.94,'Carta (21,6 × 27,9 cm)'],oficio:[21.59,33.02,'Oficio (21,6 × 33,0 cm)'],legal:[21.59,35.56,'Legal (21,6 × 35,6 cm)'],a4:[21,29.7,'A4 (21 × 29,7 cm)'],a5:[14.8,21,'A5 (14,8 × 21 cm)'],ejecutivo:[18.41,26.67,'Ejecutivo (18,4 × 26,7 cm)'],tabloide:[27.94,43.18,'Tabloide (27,9 × 43,2 cm)'],a3:[29.7,42,'A3 (29,7 × 42 cm)']};
+function LH(){const d=D.letter;if(!d)return defLT();return{l1:d.line1||'',l2:d.line2||'',l3:d.line3||'',logo:d.logo_path||'',hoja:d.hoja_path||'',papel:d.papel||'carta',mt:d.margen_sup??3.5,mb:d.margen_inf??2.5,ml:d.margen_lat??2}}
+
+/* ===== Calificar hojas por foto: usa los exámenes impresos y las claves guardadas en la plataforma ===== */
+const CAL={jobId:'',job:null,exams:[],done:new Set(),items:[],busy:false};
+function calLoad(){return Promise.all([typeof OMR==='undefined'?loadScript('omr.js?v=2'):0,typeof HOJA==='undefined'?loadScript('hoja.js?v=3'):0])}
+const calNorm=d=>String(d||'').replace(/\D/g,'').replace(/^0+/,'');
+function calFind(doc,ver){const d=calNorm(doc);return d?(CAL.exams.find(e=>calNorm(e.roster?.document)===d&&vl(e.version)===ver)||null):null}
+function calSleep(ms){return new Promise(r=>setTimeout(r,ms))}
+async function calPick(id){
+  CAL.jobId=id;CAL.items=[];CAL.exams=[];CAL.done=new Set();CAL.job=(D.jobs||[]).find(x=>x.id===id)||null;
+  if(!CAL.job){render();return}
+  const ex=await sb.from('print_exams').select('id,roster_id,version,code,answer_key,roster(full_name,document)').eq('job_id',id);
+  if(ex.error)return err(ex.error);
+  CAL.exams=ex.data.sort((a,b)=>String(a.roster?.full_name).localeCompare(String(b.roster?.full_name),'es')||a.version-b.version);
+  const rs=await sb.from('print_results').select('exam_id').eq('job_id',id);CAL.done=new Set((rs.data||[]).map(r=>r.exam_id));render()}
+async function calImg(file){
+  let bmp;try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'})}catch(e){bmp=await new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>ok(im);im.onerror=()=>no(new Error('No se pudo abrir la imagen. Usa fotos JPG o PNG.'));im.src=u})}
+  const w0=bmp.width||bmp.naturalWidth,h0=bmp.height||bmp.naturalHeight,k=Math.min(1,2800/Math.max(w0,h0)),w=Math.round(w0*k),h=Math.round(h0*k);
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,w,h);
+  return{data:x.getImageData(0,0,w,h).data,w,h}}
+async function calPdfJobs(f){
+  await loadScript(LIB.pdf);pdfjsLib.GlobalWorkerOptions.workerSrc=LIB.pdfw;
+  const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise,jobs=[];
+  for(let p=1;p<=pdf.numPages;p++)jobs.push({name:f.name+' (página '+p+')',get:async()=>{
+    const pg=await pdf.getPage(p),v0=pg.getViewport({scale:1}),sc=2800/Math.max(v0.width,v0.height),vp=pg.getViewport({scale:sc});
+    const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);const x=c.getContext('2d',{willReadFrequently:true});
+    x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);await pg.render({canvasContext:x,viewport:vp}).promise;
+    return{data:x.getImageData(0,0,c.width,c.height).data,w:c.width,h:c.height}}});
+  return jobs}
+function calCrops(g,L,res){
+  const out={},c=document.createElement('canvas'),x=c.getContext('2d');
+  for(const row of L.preguntas){const q=row[0],v=res[q];if(!v||v.st==='ok'||v.r==='sin marcar')continue;
+    const x0=Math.max(0,Math.round(row[1][0]-110)),x1=Math.min(L.W,Math.round(row[4][0]+30)),y0=Math.max(0,Math.round(row[1][1])-22),h=44,w=x1-x0;
+    const im=x.createImageData(w,h);for(let j=0;j<h;j++)for(let i=0;i<w;i++){const val=g[(y0+j)*L.W+x0+i],p=(j*w+i)*4;im.data[p]=im.data[p+1]=im.data[p+2]=val;im.data[p+3]=255}
+    c.width=w;c.height=h;x.putImageData(im,0,0);out[q]=c.toDataURL('image/jpeg',0.7)}
+  return out}
+async function calStart(){
+  if(CAL.busy)return;
+  const files=[...(document.getElementById('calfiles')?.files||[])];
+  if(!CAL.job)return toast('⚠️','Elige el examen','Selecciona el examen que imprimiste.');
+  if(!files.length)return toast('⚠️','Faltan las fotos','Elige una o más fotos (JPG o PNG) o un PDF escaneado.');
+  CAL.busy=true;CAL.items=[];render();
+  try{await calLoad()}catch(e){CAL.busy=false;render();return err(e)}
+  const L=HOJA.layout(CAL.job.n_questions),jobs=[];
+  for(const f of files){
+    if(/\.pdf$/i.test(f.name)||f.type==='application/pdf'){try{jobs.push(...await calPdfJobs(f))}catch(e){CAL.items.push({name:f.name,status:'err',err:e.message||'No se pudo leer el PDF.',ov:{}})}}
+    else jobs.push({name:f.name,get:()=>calImg(f)})}
+  for(const j of jobs){
+    const it={name:j.name,status:'proc',ov:{},exam:null};CAL.items.push(it);render();await calSleep(30);
+    try{const im=await j.get(),r=OMR.grade(im.data,im.w,im.h,L);
+      if(r.error){it.status='err';it.err=r.error}
+      else{it.status='ok';it.res=r.res;it.quality=r.quality;it.read=r.id||{};it.exam=calFind(it.read.doc,it.read.ver);it.crops=calCrops(r.g,L,r.res)}}
+    catch(e){it.status='err';it.err=(e&&e.message)||'No se pudo leer esta foto.'}
+    render();await calSleep(30)}
+  CAL.busy=false;render()}
+function calEval(it){
+  const ex=it.exam;if(!ex)return null;
+  const K=ex.answer_key||'',o={ok:0,bad:0,anu:0,rev:0,n:K.length,reasons:{},list:[],ans:{}};
+  for(let q=1;q<=K.length;q++){const v=it.res[q];if(!v)continue;const ov=it.ov[q];let letter=null,why=null,pend=false;
+    if(ov==='X')why='anulada por el docente';else if(ov)letter=ov;
+    else if(v.st==='ok')letter=v.r;else if(v.st==='revisar'){why='relleno incompleto';pend=true}else why=v.r;
+    if(letter){const c=letter===K[q-1];if(c)o.ok++;else o.bad++;o.ans[q]={r:letter,c:c?1:0}}
+    else{o.anu++;if(pend)o.rev++;o.reasons[why]=(o.reasons[why]||0)+1;o.ans[q]={m:why}}
+    if(v.st!=='ok'||ov)o.list.push({q,v,ov,letter,why,pend})}
+  o.nota=o.n?Math.round(50*o.ok/o.n)/10:0;o.pct=o.n?Math.round(100*o.ok/o.n):0;return o}
+function calSet(i,q,val){CAL.items[i].ov[q]=val||undefined;render()}
+function calAssign(i,id){CAL.items[i].exam=CAL.exams.find(e=>e.id===id)||null;render()}
+function calReset(){CAL.items=[];CAL.busy=false;render()}
+async function calSave(){
+  const m=new Map();
+  for(const it of CAL.items){if(it.status!=='ok'||!it.exam)continue;const e=calEval(it);m.set(it.exam.id,{exam_id:it.exam.id,job_id:CAL.jobId,answers:e.ans,correct:e.ok,wrong:e.bad,annulled:e.anu,total:e.n,nota:e.nota})}
+  if(!m.size)return toast('⚠️','Nada que guardar','Ninguna hoja está identificada todavía.');
+  const r=await sb.from('print_results').upsert([...m.values()],{onConflict:'exam_id'});
+  if(r.error)return err(r.error);
+  m.forEach((_,id)=>CAL.done.add(id));toast('💾','Resultados guardados',m.size+' hoja(s).');render()}
+function calCsv(){
+  const rows=[['archivo','documento','nombre','version','correctas','incorrectas','anuladas','motivos_anuladas','nota_0_a_5','porcentaje']];
+  CAL.items.filter(i=>i.status==='ok'&&i.exam).forEach(it=>{const e=calEval(it);rows.push([it.name,it.exam.roster?.document||'',it.exam.roster?.full_name||'',vl(it.exam.version),e.ok,e.bad,e.anu,Object.entries(e.reasons).map(([k,v])=>k+': '+v).join(' | '),String(e.nota).replace('.',','),e.pct+'%'])});
+  const csv='\ufeff'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='calificacion_hojas.csv';a.click()}
+function vCal(){
+  const jobs=D.jobs||[],show=CAL.items.length>0,okn=CAL.items.filter(i=>i.status==='ok'&&i.exam).length;
+  const cnt={};CAL.items.forEach(i=>{if(i.exam)cnt[i.exam.id]=(cnt[i.exam.id]||0)+1});
+  const top=show?`<div class="flex flex-wrap gap-2 items-center"><button onclick="calReset()" class="px-4 py-2 rounded-lg bg-slate-200">↩️ Calificar otras fotos</button>${okn?`<button onclick="calSave()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white">💾 Guardar resultados</button><button onclick="calCsv()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">⬇️ Descargar (Excel/CSV)</button>`:''}${CAL.busy?'<span class="text-sm text-slate-600">⏳ Leyendo fotos… no cierres esta página.</span>':''}</div>`
+  :`<div class="space-y-3"><div><label class="text-sm font-semibold">1. Examen que imprimiste</label><select class="w-full border rounded-lg p-2" onchange="calPick(this.value)"><option value="">— Elige el examen —</option>${jobs.map(j=>`<option value="${j.id}" ${CAL.jobId===j.id?'selected':''}>${E(j.title)} · ${E(j.subject)} · ${j.courses?j.courses.grade+'° '+E(j.courses.name):''} · ${j.n_questions} preguntas</option>`).join('')}</select>${jobs.length?'':'<p class="text-xs text-slate-500">Primero genera e imprime un examen en la pestaña 🖨️ Imprimir.</p>'}</div>
+  ${CAL.job?`<div class="rounded-xl p-3 text-sm" style="background:#f0fdf4;border:1px solid #bbf7d0">✅ <b>${E(CAL.job.title)}</b>: ${CAL.exams.length} hojas impresas, ${CAL.job.n_questions} preguntas. Ya calificadas: <b>${CAL.exams.filter(e=>CAL.done.has(e.id)).length}</b>. <br><span class="text-xs">La clave de respuestas ya está en la plataforma: no tienes que escribirla.</span></div>
+  <div><label class="text-sm font-semibold">2. Fotos de las hojas (una por estudiante)</label><input id="calfiles" type="file" accept="image/*,.pdf,application/pdf" multiple class="w-full border rounded-lg p-2 bg-white"></div>
+  <button onclick="calStart()" class="px-5 py-2.5 rounded-lg bg-indigo-600 text-white font-semibold">📷 Calificar las hojas</button>`:''}</div>
+  <div class="rounded-xl p-3 text-sm" style="background:#eff6ff;border:1px solid #bfdbfe"><b>Para que la lectura salga bien:</b> pon la hoja <b>plana</b> sobre una mesa de color <b>oscuro</b>, con buena luz y sin sombras fuertes. Deben verse <b>los cuatro cuadros negros</b> de las esquinas y toda la hoja. Toma la foto de frente y con el celular quieto. La hoja se imprime en <b>tamaño real, al 100 %</b> (sin «ajustar a la página»).</div>`;
+  const cards=CAL.items.map((it,i)=>{
+    if(it.status==='proc')return`<div class="border rounded-xl p-3 bg-white text-sm">⏳ Leyendo <b>${E(it.name)}</b>…</div>`;
+    if(it.status==='err')return`<div class="border rounded-xl p-3" style="background:#fef2f2;border-color:#fca5a5"><b>${E(it.name)}</b><div class="text-sm" style="color:#b91c1c">⛔ ${E(it.err)}</div></div>`;
+    const rd=it.read||{},opts=CAL.exams.map(e=>`<option value="${e.id}" ${it.exam&&it.exam.id===e.id?'selected':''}>${E(e.roster?.full_name)} — versión ${vl(e.version)}</option>`).join('');
+    const head=`<div class="flex flex-wrap items-center gap-2"><span class="text-sm">${it.exam?`✅ <b>${E(it.exam.roster?.full_name)}</b> · versión ${vl(it.exam.version)}`:`<span style="color:#b45309">⚠️ No pude identificar la hoja${rd.doc?` (leí el documento ${E(rd.doc)}${rd.ver?', versión '+rd.ver:''}, que no está en este examen)`:' (no se leyó bien el documento)'}. Elige a quién corresponde:`}</span></span><select onchange="calAssign(${i},this.value)" class="border rounded p-1 text-xs"><option value="">${it.exam?'Cambiar estudiante…':'— Elegir estudiante —'}</option>${opts}</select>${it.exam&&cnt[it.exam.id]>1?'<span class="text-xs" style="color:#b91c1c">⚠️ Hay más de una foto de este estudiante y versión</span>':''}${it.exam&&CAL.done.has(it.exam.id)?'<span class="text-xs text-slate-500">(ya tenía resultado guardado; se reemplazará)</span>':''}</div>`;
+    const e=calEval(it);
+    if(!e)return`<div class="border rounded-xl p-3 space-y-2 bg-white"><b class="text-sm">${E(it.name)}</b>${head}</div>`;
+    const rs=Object.entries(e.reasons).map(([k,v])=>`${v} ${E(k)}`).join(' · ');
+    const items=e.list.map(x=>{const op='ABCD'.split('').map(Lt=>`<option value="${Lt}" ${x.ov===Lt?'selected':''}>Contar como ${Lt}</option>`).join('');
+      const est=x.ov==='X'?'anulada por ti':x.ov?'tú: '+x.ov:(x.letter?'leída: '+x.letter:x.why);
+      return`<div class="flex flex-wrap items-center gap-2 border-t pt-2"><b class="w-10">P${x.q}</b>${it.crops[x.q]?`<img src="${it.crops[x.q]}" style="height:44px;border:1px solid #cbd5e1;border-radius:6px">`:''}<span class="text-xs ${x.pend?'font-semibold':''}" style="${x.pend?'color:#b45309':'color:#475569'}">${E(est)}</span><select onchange="calSet(${i},${x.q},this.value)" class="border rounded p-1 text-xs"><option value="">Como la leyó la app</option><option value="X" ${x.ov==='X'?'selected':''}>Anular</option>${op}</select></div>`}).join('');
+    return`<div class="border rounded-xl p-3 space-y-2 bg-white"><div class="flex flex-wrap justify-between gap-2"><b class="text-sm">${E(it.name)}</b><span class="text-xs text-slate-500">calidad de lectura: ${it.quality.ovalos} círculos ubicados${it.quality.esquinas?'':' (sin esquinas)'}</span></div>${head}
+    <div class="text-sm"><b style="color:#047857">${e.ok} correctas</b> · <b style="color:#b91c1c">${e.bad} incorrectas</b> · <b style="color:#b45309">${e.anu} anuladas</b> de ${e.n} · Nota <b>${e.nota}</b> / 5 (${e.pct}%)</div>
+    ${e.anu?`<div class="text-xs text-slate-600">Anuladas: ${rs}${e.rev?` — <b style="color:#b45309">${e.rev} esperan tu revisión</b> (cuentan como anuladas hasta que decidas)`:''}</div>`:''}
+    ${e.list.length?`<details ${e.rev?'open':''}><summary class="text-sm cursor-pointer">Ver preguntas anuladas o dudosas (${e.list.length})</summary><div class="space-y-2 mt-2">${items}</div></details>`:''}</div>`}).join('');
+  return`<div class="space-y-4"><div><h2 class="text-xl font-bold">📷 Calificar hojas de respuestas por foto</h2><p class="text-sm text-slate-600">Elige el examen y sube las fotos. La app lee el documento y la versión que van marcados en cada hoja, toma la clave guardada en la plataforma y calcula la nota. Son anuladas las preguntas sin marcar, con dos marcas, con X o chulo, o con el óvalo sin rellenar por completo.</p></div>${top}<div class="space-y-3">${cards}</div></div>`}
+
+async function go(t){
+  leaveChat();tab=t;
+  try{
+    if(t==='saber'){await loadScript('saber.js?v=1');await SABER.load()}
+    if(t==='clase'&&M.role==='prof'){await loadScript('aulavirtual.js?v=2')}
+    if(t==='aclase'||t==='asistencias'){await loadScript('claseasis.js?v=7');await ACL.load()}
+    if(t==='planeador'||t==='diario'){await loadScript('planeador.js?v=3');await PLN.load()}
+    if(t==='subirp'){await loadScript('subirpreg.js?v=3');await SUBP.load()}
+    if(t==='asis'){await loadScript('asistencia.js?v=5');await ASIS.load()}
+    if(t==='taller'){await loadScript('talleres.js?v=1');await TAL.load()}
+    if(t==='guias'||t==='guiasadm'){await loadScript('guias.js?v=1');await GUI.load(t)}
+    if(t==='bancoia'){await loadScript('bancoia.js?v=2');await BIA.load()}
+    if(t==='talleria'){await loadScript('taller_ia.js?v=1');await TIA.load()}
+    if(t==='claseia'){await loadScript('clase_ia.js?v=1');await CIA.load()}
+    if(t==='listas'){await loadScript('listados.js?v=1');await LST.load()}
+    if(t==='reun'){await loadScript('reuniones.js?v=1');await REU.load()}
+    if(t==='msgs'){await loadScript('mensajes.js?v=1');await MSG.load()}
+    if(t==='permisos'){await loadScript('permisos.js?v=4');await PERM.load()}
+    if(['periodo','virtual','plan','saberimp','diag'].includes(t)){
+      const MOD={periodo:['periodo.js','PER'],virtual:['virtual.js','VIRT'],plan:['docente.js','DOCP'],diario:['docente.js','DOCP'],saberimp:['saberimp.js','SIMP'],diag:['saberimp.js','SIMP']}[t];
+      await loadScript(MOD[0]+'?v=8');await window[MOD[1]].load(t)}
+    if(t==='perfil'){const {data:u}=await sb.auth.getUser();D.email=(u&&u.user&&u.user.email)||''}
+    if(['dcol','ddoc','dcoo','dhist','dadm'].includes(t)){await loadScript('colegio.js?v=9');await DIR.load(t)}
+    if(['dhor','mhor'].includes(t)){await loadScript('horarios.js?v=4');await HZUI.load(t)}
+    if(t==='banco'){await loadScript('banco.js?v=1');await BANCO.load()}
+    if(t==='sim'){
+      await loadAvail();
+      const s=await sb.from('simulacros').select('*').order('created_at',{ascending:false});if(s.error)throw s.error;D.sims=s.data;
+      if(M.course_id){const c=await sb.from('courses').select('name,grade').eq('id',M.course_id).single();D.myc=c.data||null}else D.myc=null;
+      const b=await sb.from('attempts').select('simulacro_id,score').eq('user_id',M.id).not('simulacro_id','is',null);
+      D.att={};(b.data||[]).forEach(a=>{const o=D.att[a.simulacro_id]||(D.att[a.simulacro_id]={n:0,best:0});o.n++;o.best=Math.max(o.best,a.score)})}
+    if(t==='simp'){
+      await loadAvail();await loadCourses();
+      const s=await sb.from('simulacros').select('*,simulacro_targets(course_id)').eq('teacher_id',M.id).order('created_at',{ascending:false});if(s.error)throw s.error;D.sims=s.data}
+    if(t==='cur'){
+      await loadCourses();const ids=D.courses.map(c=>c.id);
+      const p=await sb.from('profiles').select('id,full_name,email,grade,course_id').eq('role','est').order('full_name');if(p.error)throw p.error;
+      D.stu=p.data.filter(u=>ids.includes(u.course_id)||(M.is_admin&&!u.course_id));
+      const r=await sb.from('roster').select('*').order('full_name');D.roster=(r.data||[]).filter(x=>ids.includes(x.course_id))}
+    if(t==='imp'){
+      await loadAvail();await loadCourses();
+      await loadMembrete();
+      const p=await sb.from('profiles').select('school_other,colegios(nombre,codinst,municipios(nombre,departamentos(nombre)))').eq('id',M.id).single();D.school=p.data||{};
+      const j=await sb.from('print_jobs').select('*,courses(grade,name)').order('created_at',{ascending:false}).limit(30);D.jobs=j.data||[];
+      const r=await sb.from('roster').select('id,course_id');D.rcount={};(r.data||[]).forEach(x=>{D.rcount[x.course_id]=(D.rcount[x.course_id]||0)+1});
+      LT=LH()}
+    if(t==='cal'){
+      const j=await sb.from('print_jobs').select('*,courses(grade,name)').order('created_at',{ascending:false}).limit(30);D.jobs=j.data||[];
+      if(CAL.jobId&&!D.jobs.find(x=>x.id===CAL.jobId))CAL.jobId='';
+      if(!CAL.jobId){CAL.job=null;CAL.exams=[]}}
+    if(t==='doc'){
+      await loadCat();
+      const r=await sb.from('profiles').select('id,full_name,email,phone,teacher_status,is_admin,school_other,area,asignaturas,grados,created_at,colegios(nombre,municipios(nombre,departamentos(nombre))),courses!courses_teacher_id_fkey(grade,name)').eq('role','prof').order('created_at',{ascending:false});if(r.error)throw r.error;D.docs=r.data;
+      D.pend=r.data.filter(d=>d.teacher_status==='pendiente').length}
+    if(t==='med'){const{data,error}=await sb.from('medals').select('medal_key,earned_at').eq('user_id',M.id);if(error)throw error;D.medals=Object.fromEntries(data.map(m=>[m.medal_key,m.earned_at]))}
+    if(t==='est'){const{data,error}=await sb.from('attempts').select('subject,score,created_at').eq('user_id',M.id).order('created_at');if(error)throw error;D.mine=data}
+    if(t==='lb'){const l=await sb.rpc('get_leaderboard');if(l.error)throw l.error;D.lb=l.data}
+    if(t==='prof'){
+      const a=await sb.from('attempts').select('subject,score,grade,created_at,profiles(full_name,courses!profiles_course_id_fkey(name,teacher_id)),simulacros(title)').order('created_at',{ascending:false}).limit(1000);if(a.error)throw a.error;
+      D.all=a.data.filter(x=>x.profiles?.courses?.teacher_id===M.id);
+      const l=await sb.rpc('get_leaderboard');if(l.error)throw l.error;D.lb=l.data}
+    if(t==='preg')await loadPreg();
+    if(t==='clase')await loadClase();
+  }catch(e){err(e)}
+  render();
+}
+async function setDoc(id,st){
+  const{error}=await sb.from('profiles').update({teacher_status:st}).eq('id',id);if(error)return err(error);
+  toast('✅','Guardado',st==='aprobado'?'Docente aprobado.':st==='rechazado'?'Solicitud rechazada.':'Permiso retirado.');go('doc');
+}
+function editDoc(id){const d=D.docs.find(x=>x.id===id);ED={id,nm:d.full_name||'',tel:d.phone||'',area:d.area||'',asg:[...(d.asignaturas||[])],gs:[...(d.grados||[])]};render()}
+function togEA(n,on){ED.asg=on?[...new Set([...ED.asg,n])]:ED.asg.filter(x=>x!==n)}
+function togEG(g,on){ED.gs=on?[...new Set([...ED.gs,g])].sort((a,b)=>a-b):ED.gs.filter(x=>x!==g)}
+async function saveDoc(){
+  if(!ED.area)return toast('⚠️','Falta el área','Elige el área del docente.');
+  if(!ED.asg.length)return toast('⚠️','Falta la asignatura','Marca al menos una asignatura.');
+  const{error}=await sb.rpc('admin_update_teacher',{p_id:ED.id,p_name:ED.nm,p_phone:ED.tel,p_area:ED.area,p_asig:ED.asg,p_grados:ED.gs});
+  if(error)return err(error);
+  ED.id='';toast('✅','Docente actualizado','Los cambios ya están activos.');go('doc');
+}
+async function loadClase(){
+  const today=new Date().toISOString().slice(0,10);
+  D.cls=await getCls();
+  let cq=sb.from('chat_messages').select('author_name,body,user_id,created_at,room').order('created_at',{ascending:false}).limit(50);if(M.role==='prof')cq=cq.eq('room',M.id);
+  const c=await cq;D.chat=(c.data||[]).reverse();
+  if(M.role==='prof'){
+    const cr=await sb.from('courses').select('id').eq('teacher_id',M.id),ids=(cr.data||[]).map(x=>x.id);
+    const p=ids.length?await sb.from('profiles').select('id,full_name,grade').eq('role','est').in('course_id',ids).order('full_name'):{data:[]};
+    const a=await sb.from('attendance').select('user_id,present').eq('session_date',today);
+    D.est=p.data||[];D.att=Object.fromEntries((a.data||[]).map(x=>[x.user_id,x.present]));
+  }else{const a=await sb.from('attendance').select('present').eq('user_id',M.id).eq('session_date',today);D.me=!!(a.data&&a.data[0]?.present)}
+  chan=sb.channel('clase').on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages'},p=>{if(M.role==='prof'&&p.new.room!==M.id)return;D.chat.push(p.new);if(tab==='clase')paintChat()})
+    .on('postgres_changes',{event:'*',schema:'public',table:'class_settings'},p=>{if(clsEvent(p)&&tab==='clase'&&M.role!=='prof')paintVideo()}).subscribe();
+}
+function leaveChat(){if(chan){sb.removeChannel(chan);chan=null}}
+async function sendChat(){const i=document.getElementById('msg');const body=i.value.trim();if(!body)return;i.value='';const{error}=await sb.from('chat_messages').insert({body});if(error)err(error)}
+async function toggleAtt(uid,on){const{error}=await sb.from('attendance').upsert({user_id:uid,session_date:new Date().toISOString().slice(0,10),present:on});if(error)return err(error);if(uid===M.id)D.me=on;else D.att[uid]=on;if(M.role==='est')render()}
+async function saveClass(){
+  const url=v('cu'),title=v('ct')||'Clase en vivo',live=document.getElementById('cl').checked;
+  if(url&&!/^https:\/\//i.test(url))return toast('⚠️','Enlace no válido','Debe empezar con https://');
+  if(live&&!url)return toast('⚠️','Falta el enlace','Pega el enlace de la reunión para activar «En vivo».');
+  const{error}=await sb.from('class_settings').upsert({teacher_id:M.id,video_url:url||null,title,is_live:live,updated_at:new Date().toISOString()},{onConflict:'teacher_id'});
+  if(error)return err(error);
+  D.cls={...D.cls,teacher_id:M.id,video_url:url||null,title,is_live:live};paintVideo();paintLive();
+  toast('✅','Guardado',live?'Tus estudiantes ya ven la clase en vivo.':'Guardado. La clase no está marcada como en vivo.');
+}
+
+/* ---------- Cursos y estudiantes (docente) ---------- */
+function misGrados(){const g=(M&&M.grados&&M.grados.length)?[...M.grados].sort((x,y)=>x-y):[6,7,8,9,10,11];if(!g.includes(CF.g))CF.g=g[0];return g}
+async function createCourse(){
+  const name=(CF.name||'').trim();if(!name)return toast('⚠️','Falta el nombre','Escribe el nombre del curso, por ejemplo A o 901.');
+  const{error}=await sb.from('courses').insert({grade:CF.g,name});
+  if(error)return err(error.code==='23505'?{message:'Ya tienes ese curso en ese grado.'}:error);
+  CF.name='';toast('✅','Curso creado',CF.g+'° '+name);go('cur');
+}
+async function delCourse(id,n){
+  if(!confirm('¿Borrar el curso '+n+'? Los estudiantes quedan sin curso y se quitan sus simulacros asignados.'))return;
+  const{error}=await sb.from('courses').delete().eq('id',id);if(error)return err(error);go('cur');
+}
+async function setCourse(uid,cid){
+  const c=(D.courses||[]).find(x=>x.id===cid),patch={course_id:cid||null};if(c)patch.grade=c.grade;
+  const{error}=await sb.from('profiles').update(patch).eq('id',uid);if(error)return err(error);
+  Object.assign(D.stu.find(x=>x.id===uid),patch);toast('✅','Guardado','Curso actualizado.');render();
+}
+/* --- Lista de estudiantes desde Excel, Word, PDF o texto --- */
+const FMT={excel:'Excel o CSV',word:'Word',pdf:'PDF',text:'texto'};
+const ACC={excel:'.xlsx,.xls,.csv',word:'.docx',pdf:'.pdf'};
+const LIB={xlsx:'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',mammoth:'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js',pdf:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',pdfw:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'};
+const LOADED={};
+function loadScript(src){
+  if(!LOADED[src])LOADED[src]=new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{delete LOADED[src];ko(new Error('No se pudo cargar la herramienta para leer el archivo. Revisa tu conexión a internet.'))};document.head.appendChild(s)});
+  return LOADED[src];
+}
+const EMAIL_RE=/[^\s@;,|<>()]+@[^\s@;,|<>()]+\.[^\s@;,|<>()]+/;
+const DOC_RE=/^\d{1,3}(?:\.\d{3})+$|^\d{6,12}$/;
+function parseLine(line){
+  const m=line.match(EMAIL_RE),email=m?m[0].toLowerCase().replace(/[.]+$/,''):'';
+  const toks=(m?line.replace(m[0],' '):line).split(/[;,\t|]+/).join(' ').split(/\s+/).filter(Boolean);
+  let doc='';const nt=[];
+  toks.forEach(t=>{
+    if(!doc&&DOC_RE.test(t)){const d=t.replace(/\./g,'');if(!(d.length===10&&d[0]==='3')){doc=d;return}}
+    if(/^\d+[.)-]?$/.test(t)||/^\d{1,2}[°º]?[A-Za-zñÑ]?$/.test(t))return;
+    nt.push(t);
+  });
+  const name=nt.join(' ').trim();
+  if(!name||(!email&&!doc))return null;
+  return{email,full_name:name,document:doc};
+}
+async function readFile(file,f){
+  const lines=[];
+  if(f==='excel'){
+    await loadScript(LIB.xlsx);
+    const isCsv=/\.csv$/i.test(file.name);
+    const wb=isCsv?XLSX.read(await file.text(),{type:'string'}):XLSX.read(await file.arrayBuffer(),{type:'array'});
+    wb.SheetNames.forEach(n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:''}).forEach(r=>lines.push(r.map(x=>String(x).trim()).filter(Boolean).join(' ; '))));
+  }
+  if(f==='word'){
+    await loadScript(LIB.mammoth);
+    const r=await mammoth.convertToHtml({arrayBuffer:await file.arrayBuffer()});
+    const doc=new DOMParser().parseFromString(r.value,'text/html');
+    doc.querySelectorAll('tr').forEach(tr=>lines.push([...tr.children].map(c=>c.textContent.trim()).filter(Boolean).join(' ; ')));
+    doc.querySelectorAll('p,li').forEach(p=>{if(!p.closest('table'))lines.push(p.textContent.trim())});
+  }
+  if(f==='pdf'){
+    await loadScript(LIB.pdf);pdfjsLib.GlobalWorkerOptions.workerSrc=LIB.pdfw;
+    const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+    for(let p=1;p<=pdf.numPages;p++){
+      const tc=await(await pdf.getPage(p)).getTextContent(),rows={};
+      tc.items.forEach(it=>{if(!it.str.trim())return;const y=Math.round(it.transform[5]/3);(rows[y]=rows[y]||[]).push({x:it.transform[4],t:it.str})});
+      Object.keys(rows).map(Number).sort((a,b)=>b-a).forEach(y=>lines.push(rows[y].sort((a,b)=>a.x-b.x).map(i=>i.t.trim()).join(' ')));
+    }
+    if(!lines.length)throw new Error('No encontré texto en el PDF. Si es un PDF escaneado (una foto), usa Excel o Word.');
+  }
+  return lines;
+}
+function setRows(lines){
+  const seen=new Set(),rows=[],bad=[],sk=[];let skip=0;
+  lines.forEach(l=>{l=(l||'').trim();if(!l)return;const p=parseLine(l);
+    if(!p){if(/[A-Za-zÁ-ú]/.test(l)){skip++;if(sk.length<15)sk.push(l)}return}
+    p.document=(p.document||'').replace(/\D/g,'');
+    const palabras=p.full_name.trim().split(/\s+/).filter(w=>/[A-Za-zÁ-ú]/.test(w)),why=[];
+    if(p.document.length<5)why.push('falta el número de documento');
+    if(palabras.length<2)why.push('falta el nombre completo (nombres y apellidos)');
+    if(why.length){bad.push({l,why:why.join(' y ')});return}
+    if(seen.has(p.document))return;seen.add(p.document);rows.push(p)});
+  RF.rows=rows;RF.skip=skip;RF.sk=sk;RF.bad=bad;
+  if(!rows.length)toast('⚠️','No encontré estudiantes válidos','Cada fila debe tener el nombre completo y el número de documento del estudiante.');
+}
+async function pickFile(file){
+  if(!file)return;
+  const ext=(file.name.split('.').pop()||'').toLowerCase(),okx={excel:['xlsx','xls','csv'],word:['docx'],pdf:['pdf']}[RF.f]||[];
+  if(!okx.includes(ext))return toast('⚠️','El archivo no coincide con el formato','Elegiste '+FMT[RF.f]+' pero el archivo es .'+ext+'. Cambia el formato o el archivo.');
+  toast('⏳','Leyendo el archivo…',file.name);
+  try{setRows(await readFile(file,RF.f));RF.fname=file.name}catch(e){RF.rows=[];RF.bad=[];RF.sk=[];err(e)}
+  render();
+}
+function reviewText(){RF.fname='';setRows((RF.txt||'').split(/\n/));render()}
+async function traerListaColegio(){
+  if(!RF.c)return toast('⚠️','Elige el curso','Selecciona primero el curso.');
+  const r=await sb.rpc('lista_colegio_curso',{p_course:RF.c});if(r.error)return err(r.error);
+  const rows=(r.data||[]).map(x=>({email:x.email||null,full_name:x.full_name,document:x.document}));
+  const c=D.courses.find(x=>x.id===RF.c);
+  if(!rows.length)return toast('⚠️','El rector no ha subido ese grupo','No hay listado del colegio para '+c.grade+'° '+c.name+'. Pídele al rector o al coordinador que lo suba, o súbelo tú.');
+  let ok=0,conf=0;
+  for(let i=0;i<rows.length;i+=400){const q=await sb.rpc('assign_roster',{p_course:RF.c,p_rows:rows.slice(i,i+400)});if(q.error)return err(q.error);ok+=q.data.ok;conf+=(+q.data.conflicts||0)}
+  toast('✅','Listado traído',ok+' estudiantes en '+c.grade+'° '+c.name+'.'+(conf?' '+conf+' ya pertenecen a otro docente y no se cargaron.':''));
+  go('cur');
+}
+async function loadRoster(){
+  if(!RF.c)return toast('⚠️','Elige el curso','Selecciona el curso al que pertenece esta lista.');
+  if(RF.bad&&RF.bad.length)return toast('⚠️','Faltan datos en '+RF.bad.length+' fila(s)','Todos los estudiantes deben tener nombre completo y documento. Corrige la lista y vuelve a subirla.');
+  if(!RF.rows.length)return toast('⚠️','No hay estudiantes para cargar','Primero sube un archivo o escribe la lista y revísala.');
+  const c=D.courses.find(x=>x.id===RF.c),all=RF.rows.map(x=>({email:x.email||null,full_name:x.full_name,document:x.document||null}));
+  let ok=0,conf=0;
+  for(let i=0;i<all.length;i+=400){
+    const r=await sb.rpc('assign_roster',{p_course:RF.c,p_rows:all.slice(i,i+400)});
+    if(r.error)return err(r.error);
+    ok+=r.data.ok;conf+=(+r.data.conflicts||0);
+  }
+  toast('✅','Lista cargada',ok+' estudiantes en '+c.grade+'° '+c.name+'.'+(conf?' '+conf+' ya pertenecen a otro docente y no se cargaron.':''));
+  RF.txt='';RF.rows=[];RF.skip=0;RF.bad=[];RF.sk=[];RF.fname='';go('cur');
+}
+async function delRoster(id){const{error}=await sb.from('roster').delete().eq('id',id);if(error)return err(error);go('cur')}
+
+/* ---------- Simulacros y tareas (docente) ---------- */
+function togC(id,on){SF.cs=on?[...new Set([...SF.cs,id])]:SF.cs.filter(x=>x!==id)}
+function allC(){SF.cs=(D.courses||[]).filter(c=>c.grade===SF.g).map(c=>c.id);render()}
+async function createSim(){
+  const av=D.avail||{},have=(av[SF.g]||{})[SF.s]||0,max=Math.min(have,120),title=(SF.t||'').trim();
+  if(!title)return toast('⚠️','Falta el nombre','Escribe un nombre.');
+  if(!(SF.n>=1)||SF.n>max)return toast('⚠️','Número de preguntas no válido','Debe estar entre 1 y '+max+' (las preguntas visibles de esa materia).');
+  if(!(SF.m>=1)||SF.m>10)return toast('⚠️','Minutos no válidos','Entre 1 y 10 minutos por pregunta.');
+  if(!(SF.a>=1)||SF.a>10)return toast('⚠️','Intentos no válidos','Entre 1 y 10 intentos.');
+  if(!SF.cs.length)return toast('⚠️','Elige los cursos','Marca al menos un curso para activarlo.');
+  const due=SF.due?new Date(SF.due+'T23:59:00').toISOString():null;
+  const{data,error}=await sb.from('simulacros').insert({title,kind:SF.k,description:(SF.desc||'').trim()||null,grade:SF.g,subject:SF.s,n_questions:SF.n,minutes_per_question:SF.m,max_attempts:SF.a,due_at:due}).select('id').single();
+  if(error)return err(error);
+  const t=await sb.from('simulacro_targets').insert(SF.cs.map(c=>({simulacro_id:data.id,course_id:c})));if(t.error)return err(t.error);
+  SF.t='';SF.desc='';SF.due='';SF.cs=[];toast('✅','Activado','Ya lo ven los estudiantes de los cursos que marcaste.');go('simp');
+}
+async function setSim(id,patch){const{error}=await sb.from('simulacros').update(patch).eq('id',id);if(error)return err(error);go('simp')}
+async function delSim(id,title){
+  if(!confirm('¿Borrar "'+title+'"? Los intentos ya hechos se conservan.'))return;
+  const{error}=await sb.from('simulacros').delete().eq('id',id);if(error)return err(error);go('simp');
+}
+async function addT(simId){const s=document.getElementById('add_'+simId);if(!s||!s.value)return;const{error}=await sb.from('simulacro_targets').insert({simulacro_id:simId,course_id:s.value});if(error)return err(error);go('simp')}
+async function delT(simId,cid){const{error}=await sb.from('simulacro_targets').delete().eq('simulacro_id',simId).eq('course_id',cid);if(error)return err(error);go('simp')}
+
+/* ---------- Imprimir: membrete, exámenes y hojas de respuestas ---------- */
+function editorMembrete(){
+  const P=PAPEL[LT.papel]||PAPEL.carta,ratio=P[1]/P[0],w=200,h=Math.round(w*ratio);
+  const mt=(+LT.mt||0)/P[1]*100,mb=(+LT.mb||0)/P[1]*100,ml=(+LT.ml||0)/P[0]*100;
+  const prev=`<div style="position:relative;width:${w}px;height:${h}px;border:1px solid #94a3b8;background:#fff ${LT.hoja?`url('${LOGO}${encodeURI(LT.hoja)}') center/100% 100% no-repeat`:''};box-shadow:0 2px 8px #0002"><div style="position:absolute;left:${ml}%;right:${ml}%;top:${mt}%;bottom:${mb}%;border:1px dashed #2563eb;color:#2563eb;font-size:10px;display:flex;align-items:center;justify-content:center;text-align:center">Aquí va el texto<br>del documento</div></div>`;
+  return`<div class="bg-white rounded-2xl p-4 shadow space-y-3"><h2 class="text-xl font-bold">📄 Hoja membretada</h2><p class="text-sm text-slate-600">Sube la hoja membretada de tu colegio (una página completa, como imagen PNG o JPG) y elige el tipo de papel, igual que en Word. Saldrá de fondo en los exámenes, claves, permisos y planeadores de todo el colegio. Solo el rector y el coordinador pueden cambiarla; los docentes la usan sin poder modificarla. Las hojas de respuestas no la llevan, para que se puedan calificar por foto.</p>
+  <div class="flex flex-wrap gap-4"><div class="space-y-3" style="flex:1;min-width:250px">
+   <label class="text-sm block">Nombre del colegio (para los textos de los documentos)<input class="w-full border rounded-lg p-2 mt-1" value="${E(LT.l1)}" oninput="LT.l1=this.value"></label>
+   <label class="text-sm block">Tipo de papel<select class="w-full border rounded-lg p-2 mt-1" onchange="LT.papel=this.value;render()">${Object.entries(PAPEL).map(([k,v])=>`<option value="${k}" ${LT.papel===k?'selected':''}>${v[2]}</option>`).join('')}</select></label>
+   <div class="grid grid-cols-3 gap-2"><label class="text-xs">Margen de arriba (cm)<input type="number" step="0.5" min="0" max="10" class="w-full border rounded-lg p-2 mt-1" value="${LT.mt}" onchange="LT.mt=this.value;render()"></label><label class="text-xs">Margen de abajo (cm)<input type="number" step="0.5" min="0" max="10" class="w-full border rounded-lg p-2 mt-1" value="${LT.mb}" onchange="LT.mb=this.value;render()"></label><label class="text-xs">Márgenes laterales (cm)<input type="number" step="0.5" min="0" max="6" class="w-full border rounded-lg p-2 mt-1" value="${LT.ml}" onchange="LT.ml=this.value;render()"></label></div>
+   <div class="flex flex-wrap items-center gap-3">${LT.hoja?'<button onclick="delHoja()" class="px-3 py-1.5 rounded-lg bg-slate-200 text-xs">Quitar hoja membretada</button>':'<span class="text-xs text-slate-500">Todavía no has subido la hoja</span>'}<label class="text-sm">Subir hoja membretada (PNG o JPG, máx. 6 MB)<input type="file" accept="image/png,image/jpeg" class="block mt-1" onchange="pickHoja(this.files[0])"></label></div>
+   <button onclick="saveLetter()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">Guardar</button></div>
+  <div style="text-align:center"><div class="text-xs text-slate-500 mb-1">Vista previa (el recuadro azul es donde va el texto)</div>${prev}</div></div></div>`;
+}
+async function loadMembrete(){
+  D.letter=null;
+  if(M&&M.colegio_id){const c=await sb.from('colegio_membrete').select('*').eq('colegio_id',M.colegio_id).maybeSingle();
+    if(c.data)D.letter=c.data}
+  if(!D.letter&&M&&M.role==='prof'){const l=await sb.from('letterheads').select('*').eq('teacher_id',M.id).maybeSingle();D.letter=l.data||null}
+  if(!D.letter&&M&&M.colegio_id&&!D.school){const p=await sb.from('profiles').select('school_other,colegios(nombre,codinst,municipios(nombre,departamentos(nombre)))').eq('id',M.id).single();D.school=p.data||{}}
+  try{LT=LH()}catch(x){}
+}
+async function saveLetter(){
+  if(!isDir()&&!(M&&M.is_admin))return toast('⚠️','No permitido','Solo el rector o el coordinador pueden cambiar la hoja membretada.');
+  if(!M.colegio_id)return toast('⚠️','Sin colegio','Tu cuenta no tiene colegio asignado.');
+  const n=(v,d,mx)=>{v=+v;return isNaN(v)?d:Math.max(0,Math.min(mx,v))};
+  const row={colegio_id:M.colegio_id,line1:(LT.l1||'').trim()||null,line2:(LT.l2||'').trim()||null,line3:(LT.l3||'').trim()||null,logo_path:LT.logo||null,hoja_path:LT.hoja||null,papel:LT.papel||'carta',margen_sup:n(LT.mt,3.5,10),margen_inf:n(LT.mb,2.5,10),margen_lat:n(LT.ml,2,6),updated_by:M.id,updated_at:new Date().toISOString()};
+  const{error}=await sb.from('colegio_membrete').upsert(row,{onConflict:'colegio_id'});if(error)return err(error);
+  D.letter=row;toast('✅','Hoja membretada guardada','Saldrá en los documentos del colegio.');render();
+}
+async function pickHoja(f){
+  if(!f)return;
+  if(!/^image\/(png|jpeg)$/.test(f.type))return toast('⚠️','Formato no válido','Sube la hoja membretada como imagen PNG o JPG (una página completa).');
+  if(f.size>6*1048576)return toast('⚠️','Imagen muy pesada','Máximo 6 MB.');
+  const path='colegio-'+M.colegio_id+'/hoja-'+Date.now()+'.'+(f.type==='image/png'?'png':'jpg');
+  const{error}=await sb.storage.from('school-logos').upload(path,f,{contentType:f.type});if(error)return err(error);
+  LT.hoja=path;await saveLetter();
+}
+async function delHoja(){LT.hoja='';await saveLetter()}
+async function pickLogo(f){
+  if(!f)return;
+  if(!/^image\/(png|jpeg)$/.test(f.type))return toast('⚠️','Formato no válido','El logo debe ser una imagen PNG o JPG.');
+  if(f.size>1048576)return toast('⚠️','Logo muy pesado','El logo debe pesar menos de 1 MB.');
+  const path='colegio-'+M.colegio_id+'/logo-'+Date.now()+'.'+(f.type==='image/png'?'png':'jpg');
+  const{error}=await sb.storage.from('school-logos').upload(path,f,{contentType:f.type});if(error)return err(error);
+  LT.logo=path;await saveLetter();
+}
+async function delLogo(){LT.logo='';await saveLetter()}
+/* ---------- Referentes de calidad (DBA, estándares, competencias...) ---------- */
+async function loadAsig(){if(D.asig)return;const r=await sb.from('asignaturas').select('nombre,banco_subject,areas(nombre)');D.asig=r.data||[]}
+function refArea(sub){const a=(D.asig||[]).find(x=>x.banco_subject===sub||x.nombre===sub);return a&&a.areas?a.areas.nombre:''}
+async function loadRefs(){
+  await loadAsig();
+  const c=(D.courses||[]).find(x=>x.id===PJ.c),area=refArea(PJ.s);
+  if(!c||!PJ.s){D.cat=[];D.catArea='';render();return}
+  const sel='id,tipo,prueba,codigo,padre,peso_pct,titulo,grado_min,grado_max,owner,verificado,asignaturas';
+  const [q1,q2]=await Promise.all([
+    area?sb.from('referentes').select(sel).eq('area',area).is('owner',null).limit(1000):Promise.resolve({data:[]}),
+    sb.from('referentes').select(sel).eq('owner',M.id).eq('asignatura',PJ.s).limit(300)]);
+  if(q1.error||q2.error){D.cat=[];D.catArea=area;render();return err(q1.error||q2.error)}
+  const general=PJ.s==='Ciencias Naturales';   // la materia general del área ve todos los referentes del área
+  const okMat=x=>!x.asignaturas||x.asignaturas.includes(PJ.s)||general,okGr=x=>x.grado_min==null||(c.grade>=x.grado_min&&c.grade<=x.grado_max);
+  D.cat=[...(q1.data||[]).filter(x=>okMat(x)&&okGr(x)),...(q2.data||[]).filter(okGr)].sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo),'es',{numeric:true}));
+  D.catArea=area;render()}
+function togRef(id,on){const i=PJ.refs.indexOf(id);if(on&&i<0)PJ.refs.push(id);if(!on&&i>=0)PJ.refs.splice(i,1);const e=document.getElementById('refcnt');if(e)e.textContent=PJ.refs.length}
+const REFT={dba:'DBA (Derechos Básicos de Aprendizaje)',estandar:'Estándares Básicos de Competencias',competencia:'Competencias',afirmacion:'Afirmaciones',evidencia:'Evidencias',componente:'Componentes',contenido:'Contenidos',parte:'Partes de la prueba',complementario:'Complementarios del colegio (no oficiales)',indicador:'Indicadores de desempeño (propios)',tema:'Temas (propios)',otro:'Otros referentes'};
+function refPicker(){
+  const cat=D.cat||[];if(!PJ.c||!PJ.s)return'';
+  const orden=['dba','estandar','competencia','afirmacion','componente','contenido','parte','evidencia','complementario','indicador','tema','otro'];
+  const grupos=orden.map(t=>({t,items:cat.filter(x=>x.tipo===t)})).filter(g=>g.items.length);
+  const lbl=x=>`${x.codigo==='PROPIO'?'':E(x.codigo)+' · '}${E(x.titulo)}${x.peso_pct?` <span class="text-slate-400">(${x.peso_pct} %)</span>`:''}${x.owner?' <span style="color:#7c3aed">(propio)</span>':''}${x.verificado?'':x.tipo==='complementario'?' <span style="color:#b45309" title="Aporte del colegio, no oficial">(no oficial)</span>':' <span style="color:#b45309" title="Por confirmar con el texto oficial">⚠</span>'}`;
+  return`<div class="border rounded-xl p-3 space-y-2"><div class="font-semibold text-sm">📚 Referentes de calidad que evalúa este examen <span class="text-xs font-normal text-slate-500">(opcional · saldrán en el informe)</span></div>
+  <p class="text-xs text-slate-500">Solo aparecen los referentes de <b>${E(PJ.s)}</b>${D.catArea&&D.catArea!==PJ.s?' (área de '+E(D.catArea)+')':''} para el grado de tu curso, según el Ministerio de Educación y el ICFES. Marca los que trabajaste en este examen: no tienes que subir nada. Seleccionados: <b id="refcnt">${PJ.refs.length}</b></p>
+  ${grupos.length?grupos.map(g=>`<details ${g.t==='dba'||g.t==='estandar'?'open':''}><summary class="text-sm cursor-pointer font-medium">${REFT[g.t]} (${g.items.length})</summary><div class="space-y-1 mt-1" style="max-height:260px;overflow:auto">${g.items.map(x=>`<label class="flex gap-2 text-xs items-start"><input type="checkbox" ${PJ.refs.includes(x.id)?'checked':''} onchange="togRef(${x.id},this.checked)" style="margin-top:2px"><span>${lbl(x)}</span></label>`).join('')}</div></details>`).join(''):'<p class="text-xs" style="color:#b45309">Todavía no hay referentes oficiales cargados para esta materia y grado. Puedes escribir los tuyos aquí abajo.</p>'}
+  <div class="flex flex-wrap gap-2 items-center pt-1"><select id="rtp" class="border rounded p-1 text-xs"><option value="indicador">Indicador de desempeño</option><option value="tema">Tema</option><option value="dba">DBA propio</option><option value="estandar">Estándar propio</option><option value="competencia">Competencia propia</option><option value="otro">Otro</option></select><input id="rtx" class="border rounded p-1 text-xs flex-1" style="min-width:200px" placeholder="Escribe aquí un referente de tu plan de área"><button onclick="addOwnRef()" class="px-3 py-1 rounded bg-slate-200 text-xs">➕ Agregar</button></div></div>`}
+async function addOwnRef(){
+  const c=(D.courses||[]).find(x=>x.id===PJ.c),tx=(document.getElementById('rtx')?.value||'').trim(),tp=document.getElementById('rtp')?.value||'otro';
+  if(!c||!PJ.s)return toast('⚠️','Elige curso y materia','Primero elige el curso y la materia.');
+  if(tx.length<5)return toast('⚠️','Escribe el referente','Escribe al menos unas palabras.');
+  const r=await sb.from('referentes').insert({tipo:tp,area:refArea(PJ.s)||'Otra',asignatura:PJ.s,grado_min:c.grade,grado_max:c.grade,codigo:'PROPIO',titulo:tx.slice(0,300),fuente:'Plan de área del docente',verificado:true,owner:M.id}).select('id').single();
+  if(r.error)return err(r.error);
+  PJ.refs.push(r.data.id);await loadRefs();toast('✅','Referente agregado','Quedó marcado para este examen.')}
+async function createJob(){
+  const c=(D.courses||[]).find(x=>x.id===PJ.c);
+  if(!c)return toast('⚠️','Elige el curso','Selecciona el curso de los estudiantes.');
+  if(!(PJ.t||'').trim())return toast('⚠️','Falta el nombre','Escribe el nombre del examen.');
+  if(!(PJ.n>=10&&PJ.n<=120))return toast('⚠️','Número de preguntas','El examen debe tener entre 10 y 120 preguntas.');
+  if(!PJ.s)return toast('⚠️','Falta la materia','Elige la materia.');
+  toast('⏳','Generando exámenes…','Un momento.');
+  const r=await sb.rpc('create_print_job',{p_course:PJ.c,p_title:PJ.t.trim(),p_subject:PJ.s,p_n:PJ.n,p_versions:PJ.v,p_date:PJ.d||null});
+  if(r.error)return err(r.error);
+  if(PJ.refs.length){const q=await sb.from('job_referentes').insert(PJ.refs.map(id=>({job_id:r.data,referente_id:id})));if(q.error)toast('⚠️','No se guardaron los referentes',q.error.message)}
+  PJ.t='';PJ.refs=[];await go('imp');await openJob(r.data);
+}
+async function openJob(id){
+  const j=(D.jobs||[]).find(x=>x.id===id);if(!j)return;
+  toast('⏳','Cargando exámenes…',j.title);
+  const ex=await sb.from('print_exams').select('id,roster_id,version,code,question_ids,answer_key,roster(full_name,document)').eq('job_id',id);
+  if(ex.error)return err(ex.error);
+  const exams=ex.data.sort((a,b)=>String(a.roster?.full_name).localeCompare(String(b.roster?.full_name),'es')||a.version-b.version);
+  const ids=[...new Set(exams.flatMap(e=>e.question_ids))],qs={};
+  for(let i=0;i<ids.length;i+=60){const r=await sb.from('questions').select('id,body,options,image_path,stimulus_title,stimulus_content,grupo_key').in('id',ids.slice(i,i+60));if(r.error)return err(r.error);r.data.forEach(q=>{qs[q.id]=q})}
+  D.job={job:j,exams,qs,cname:j.courses?j.courses.grade+'° '+j.courses.name:''};PJ.st='';PJ.ver='';render();
+  setTimeout(()=>document.getElementById('jobbox')?.scrollIntoView({behavior:'smooth'}),60);
+}
+async function delJob(id,t){
+  if(!confirm('¿Borrar "'+t+'" y todos sus exámenes generados?'))return;
+  const{error}=await sb.from('print_jobs').delete().eq('id',id);if(error)return err(error);
+  if(D.job&&D.job.job.id===id)D.job=null;go('imp');
+}
+const fch=d=>new Date(d+'T12:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
+const vl=n=>'ABCDEF'[n-1]||String(n);
+function lhHtml(h){
+  const L=LH();if(L.hoja)return'';
+  return`<div class="lh">${L.logo?`<img src="${LOGO}${encodeURI(L.logo)}" style="height:${h}mm;width:auto">`:''}<div class="t"><div class="l1">${E(L.l1)}</div>${L.l2?`<div>${E(L.l2)}</div>`:''}${L.l3?`<div>${E(L.l3)}</div>`:''}</div></div>`;
+}
+function qHtml(q,i){
+  if(q.image_path)return`<div class="q"><b>${i+1}.</b><img src="${IMG}${encodeURI(q.image_path)}"></div>`;
+  const st=q.stimulus_content?`<div class="st">${q.stimulus_title?`<b>${E(q.stimulus_title)}</b><br>`:''}<span style="white-space:pre-wrap">${E(q.stimulus_content)}</span></div>`:'';
+  return`<div class="q"><b>${i+1}.</b> ${st}<div>${E(q.body)}</div>${q.options.map((o,k)=>`<div class="op">${'ABCD'[k]}. ${E(o)}</div>`).join('')}</div>`;
+}
+function idTable(e){
+  const J=D.job.job;
+  return`<table class="idt"><tr><td>Estudiante: <b>${E(e.roster?.full_name)}</b></td><td>Documento: <b>${E(e.roster?.document||'')}</b></td></tr><tr><td>${E(J.title)} · ${E(J.subject)} · ${E(D.job.cname)}${J.exam_date?' · '+fch(J.exam_date):''}</td><td>Versión <b>${vl(e.version)}</b> · Código <b>${E(e.code)}</b></td></tr></table>`;
+}
+function cuadSpec(e){
+  const J=D.job.job,Lh=LH(),qs=D.job.qs;
+  return{titulo:J.title,tipo:'Examen',colegio:Lh.l1,logo:Lh.logo?LOGO+encodeURI(Lh.logo):'',asignatura:J.subject,curso:D.job.cname,fecha:J.exam_date?fch(J.exam_date):'',estudiante:e.roster?.full_name,documento:e.roster?.document||'',codigo:e.code,version:vl(e.version),vIdx:(e.version||1)-1,preguntas:e.question_ids.map(id=>qs[id]).filter(Boolean)};
+}
+async function previewJob(){
+  if(!D.job)return;
+  const ex=D.job.exams.filter(e=>(!PJ.st||e.roster_id===PJ.st)&&(!PJ.ver||String(e.version)===PJ.ver));
+  if(!ex.length)return toast('⚠️','Nada para ver','Revisa los filtros de estudiante y versión.');
+  try{if(typeof CUAD==='undefined')await loadScript('cuadernillo.js?v=1');await CUAD.vistaPrevia(cuadSpec(ex[0]),{onPublicar:()=>printKind('ex'),textoPublicar:'🖨️ Imprimir todos los exámenes'})}catch(x){err(x)}
+}
+function examHtml(e){
+  if(typeof CUAD!=='undefined')return CUAD.html(cuadSpec(e));
+  const qs=D.job.qs;
+  return`<div class="pg">${lhHtml(18)}${idTable(e)}<p class="in">Lea con atención cada pregunta. Marque su respuesta en la hoja de respuestas, rellenando completamente un solo círculo por pregunta.</p>${e.question_ids.map((id,i)=>qs[id]?qHtml(qs[id],i):'').join('')}</div>`;
+}
+function sheetHtml(e){
+  const J=D.job.job,Lh=LH();
+  return HOJA.html(HOJA.layout(J.n_questions),{titulo:J.title+' · '+J.subject,colegio:Lh.l1,nombre:e.roster?.full_name,documento:e.roster?.document||'',curso:D.job.cname,fecha:J.exam_date?fch(J.exam_date):'',version:(e.version||1)-1,codigo:e.code,logo:Lh.logo?LOGO+encodeURI(Lh.logo):''});
+}
+function keyHtml(ex){
+  const J=D.job.job;
+  return`<div class="pg">${lhHtml(14)}<div class="ti">CLAVES DE RESPUESTA · ${E(J.title)} · ${E(J.subject)} · ${E(D.job.cname)} (solo para el docente)</div><table class="kt"><tr><th>Estudiante</th><th>Documento</th><th>Ver.</th><th>Código</th><th>Clave (número de pregunta + respuesta correcta)</th></tr>${ex.map(e=>`<tr><td>${E(e.roster?.full_name)}</td><td>${E(e.roster?.document||'')}</td><td>${vl(e.version)}</td><td>${E(e.code)}</td><td>${e.answer_key.split('').map((c,i)=>(i+1)+c).join(' ')}</td></tr>`).join('')}</table></div>`;
+}
+async function doPrint(html,opts){
+  let a=document.getElementById('printarea');if(a)a.remove();
+  let st=document.getElementById('hoja-style');if(st)st.remove();
+  const L=opts&&opts.hoja?LH():null;
+  if(L&&L.hoja){
+    const P=PAPEL[L.papel]||PAPEL.carta;
+    html=`<img class="hoja-bg" src="${LOGO+encodeURI(L.hoja)}" style="position:fixed;left:0;top:0;width:${P[0]}cm;height:${P[1]}cm;z-index:-1"><table style="width:100%;border-collapse:collapse"><thead><tr><td style="height:${L.mt}cm;padding:0"></td></tr></thead><tbody><tr><td style="padding:0 ${L.ml}cm;vertical-align:top">${html}</td></tr></tbody><tfoot><tr><td style="height:${L.mb}cm;padding:0"></td></tr></tfoot></table>`;
+    st=document.createElement('style');st.id='hoja-style';
+    st.textContent=`@media print{@page{size:${P[0]}cm ${P[1]}cm;margin:0}#printarea{background:transparent!important;padding:0}}`;
+    document.head.appendChild(st);
+  }
+  a=document.createElement('div');a.id='printarea';a.innerHTML=html;document.body.appendChild(a);
+  await Promise.all([...a.querySelectorAll('img')].map(im=>im.complete?1:new Promise(r=>{im.onload=im.onerror=r;setTimeout(r,8000)})));
+  window.onafterprint=()=>{const x=document.getElementById('printarea');if(x)x.remove();const y=document.getElementById('hoja-style');if(y)y.remove()};
+  window.print();
+}
+async function printKind(k){
+  if(!D.job)return;
+  try{if(k==='ex'&&typeof CUAD==='undefined')await loadScript('cuadernillo.js?v=1')}catch(e){return err(e)}
+  if(k==='sh'){try{if(typeof HOJA==='undefined')await loadScript('hoja.js?v=3')}catch(e){return err(e)}}
+  const ex=D.job.exams.filter(e=>(!PJ.st||e.roster_id===PJ.st)&&(!PJ.ver||String(e.version)===PJ.ver));
+  if(!ex.length)return toast('⚠️','Nada para imprimir','Revisa los filtros de estudiante y versión.');
+  doPrint(k==='ex'?ex.map(examHtml).join(''):k==='sh'?ex.map(sheetHtml).join(''):keyHtml(ex),{hoja:k!=='sh'});
+}
+
+/* ---------- Banco de preguntas ---------- */
+async function loadPreg(){
+  const a=await sb.from('questions').select('grade,subject').limit(3000);if(a.error)throw a.error;
+  const av={};a.data.forEach(q=>{(av[q.grade]=av[q.grade]||{});av[q.grade][q.subject]=(av[q.grade][q.subject]||0)+1});D.pav=av;
+  const gs=Object.keys(av).map(Number).sort((x,y)=>x-y);
+  if(!gs.length){D.pq=[];D.pn=0;D.pstat={on:0,rev:0,tot:0};return}
+  if(!av[QF.g])QF.g=gs[gs.length-1];
+  const subs=Object.keys(av[QF.g]).sort();
+  if(!QF.s||!av[QF.g][QF.s])QF.s=subs[0];
+  let q=sb.from('questions').select('id,body,options,image_path,stimulus_title,stimulus_content,difficulty,status,active,ext_id,question_keys(correct,explanation)',{count:'exact'}).eq('grade',QF.g).eq('subject',QF.s);
+  if(QF.f==='on')q=q.eq('active',true);if(QF.f==='off')q=q.eq('active',false);if(QF.f==='draft')q=q.eq('status','draft');if(QF.f==='rev')q=q.eq('status','published');
+  const r=await q.order('ext_id',{nullsFirst:false}).order('id').range(QF.p*10,QF.p*10+9);
+  if(r.error)throw r.error;D.pq=r.data;D.pn=r.count||0;
+  const t=await sb.from('questions').select('active,status').eq('grade',QF.g).eq('subject',QF.s).limit(1000);
+  const x=t.data||[];D.pstat={on:x.filter(i=>i.active).length,rev:x.filter(i=>i.status==='published').length,tot:x.length};
+}
+async function setQ(id,patch){const{error}=await sb.from('questions').update(patch).eq('id',id);if(error)return err(error);try{await loadPreg()}catch(e){err(e)}render()}
+async function bulk(patch,txt){
+  if(!confirm(`¿${txt} TODAS las preguntas de ${QF.s} (${QF.g}°)?`))return;
+  const{error}=await sb.from('questions').update(patch).eq('grade',QF.g).eq('subject',QF.s);
+  if(error)return err(error);toast('✅','Listo',txt+': '+QF.s+' '+QF.g+'°');go('preg');
+}
+
+/* ---------- Simulacro (estudiante) ---------- */
+async function startSim(simId){
+  const sim=(D.sims||[]).find(x=>x.id===simId);if(!sim)return;
+  const secs=sim.minutes_per_question*60,n=sim.n_questions;
+  const{data,error}=await sb.from('questions').select('id,part,body,options,image_path,stimulus_title,stimulus_content').eq('grade',sim.grade).eq('subject',sim.subject).eq('active',true);
+  if(error)return err(error);
+  if(data.length<n)return toast('⚠️','No disponible','Hay '+data.length+' preguntas visibles y se piden '+n+'. Avisa a tu docente.');
+  const qs=data.sort(()=>Math.random()-.5).slice(0,n);
+  const total=qs.length*secs;
+  S={grade:sim.grade,subject:sim.subject,qs,ans:{},total,left:total,i:0,sending:false,simId:sim.id,title:sim.title};
+  clearInterval(timer);
+  timer=setInterval(()=>{if(!S)return;S.left--;const e=document.getElementById('clk');if(e){e.textContent=fmt(S.left);e.className='font-mono text-2xl font-bold '+(S.left<30?'text-red-600':'text-indigo-700')}if(S.left<=0)finish(true)},1000);
+  render();
+}
+async function finish(auto){
+  if(!S||S.sending)return;S.sending=true;clearInterval(timer);
+  const answers=Object.fromEntries(S.qs.map(q=>[q.id,S.ans[q.id]??null]));
+  const{data,error}=await sb.rpc('submit_attempt',{p_grade:S.grade,p_subject:S.subject,p_answers:answers,p_seconds_left:Math.max(0,S.left),p_auto:!!auto,p_simulacro_id:S.simId});
+  if(error){S.sending=false;return err(error)}
+  RES={...data,auto,qs:S.qs,ans:S.ans};S=null;
+  (data.new_medals||[]).forEach(k=>{const m=MEDALS[k];if(m)toast(m[0],'¡Medalla desbloqueada: '+m[1]+'!',m[2])});
+  render();
+}
+
+/* ---------- CSV ---------- */
+function exportCSV(){
+  const esc=x=>'"'+String(x??'').replace(/"/g,'""')+'"';
+  const rows=[['Estudiante','Curso','Grado','Materia','Simulacro o tarea','Puntaje','Fecha']].concat((D.all||[]).map(a=>[a.profiles?.full_name,a.profiles?.courses?.name||'',a.grade+'°',a.subject,a.simulacros?.title||'(sin asignar)',a.score,new Date(a.created_at).toLocaleString('es-CO')]));
+  const blob=new Blob(['\ufeff'+rows.map(r=>r.map(esc).join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='historial_notas.csv';document.body.appendChild(a);a.click();a.remove();
+}
+
+/* ---------- Vistas ---------- */
+function authWrap(h){return`<div class="aic-login"><div class="aic-login-art"><div class="aic-logo">🎓</div><h1>Aula<span>ICFES</span></h1><b>Evalúa · Aprende · Mejora</b><p>Tu aliado en el análisis y mejoramiento de los resultados Saber 11</p><div class="aic-login-dots"><i></i><i></i><i></i></div></div><div class="aic-login-form">${h}</div></div>`}
+function vAuth(){
+  const m=authMode,T=[['login','Entrar'],['register','Soy estudiante'],['docente','Soy docente'],['directivo','Rector o coordinador']];
+  const head=`<img src="aula360-logo-vertical.png" alt="AULA360 · Aprende, practica, evalúa" style="display:block;margin:0 auto;width:min(230px,70%);height:auto;object-fit:contain"><h1 class="sr-only" style="position:absolute;left:-9999px">AULA360</h1><p class="text-center text-sm text-slate-500">Clases virtuales y simulacros Pre-ICFES</p><div class="flex flex-wrap gap-2">${T.map(([k,l])=>`<button onclick="setMode('${k}')" class="flex-1 py-2 rounded-lg text-sm ${m===k?'on':'bg-slate-200'}" style="min-width:7rem">${l}</button>`).join('')}</div>`;
+  if(m==='directivo'&&window.DIR)return DIR.vReg(head);
+  if(m==='docente'){
+    const deps=D.deps||[],muns=D.muns||[],asg=(D.asigs||[]).filter(x=>x.area===RG.area);
+    return`<div class="max-w-md mx-auto mt-10 bg-white rounded-2xl shadow p-6 space-y-3">${head}<p class="text-xs text-slate-500">Regístrate como docente. Un administrador revisará tus datos antes de activar tu cuenta.</p>
+    <input class="w-full border rounded-lg p-2" placeholder="Nombre completo" value="${E(RG.nm)}" oninput="RG.nm=this.value">
+    <input class="w-full border rounded-lg p-2" type="tel" placeholder="Teléfono celular" value="${E(RG.tel)}" oninput="RG.tel=this.value">
+    <input class="w-full border rounded-lg p-2" type="email" placeholder="Correo electrónico" value="${E(RG.em)}" oninput="RG.em=this.value">
+    <input class="w-full border rounded-lg p-2" type="password" placeholder="Contraseña (mín. 6)" value="${E(RG.pw)}" oninput="RG.pw=this.value">
+    <label class="text-sm block">Departamento<select class="w-full border rounded-lg p-2 mt-1" onchange="onDep(this.value)"><option value="">Elige tu departamento…</option>${deps.map(d=>`<option value="${d.id}" ${String(d.id)===String(RG.dep)?'selected':''}>${E(d.nombre)}</option>`).join('')}</select></label>
+    <label class="text-sm block">Municipio<select class="w-full border rounded-lg p-2 mt-1" ${RG.dep?'':'disabled'} onchange="onMun(this.value)"><option value="">Elige tu municipio…</option>${muns.map(x=>`<option value="${x.id}" ${String(x.id)===String(RG.mun)?'selected':''}>${E(x.nombre)}</option>`).join('')}</select></label>
+    ${RG.otro?`<label class="text-sm block">Nombre de tu colegio<input class="w-full border rounded-lg p-2 mt-1" placeholder="Escribe el nombre de tu colegio" value="${E(RG.otroTxt)}" oninput="RG.otroTxt=this.value"></label>`:`<label class="text-sm block">Colegio<input id="colq" class="w-full border rounded-lg p-2 mt-1" placeholder="Escribe para buscar tu colegio…" ${RG.mun?'':'disabled'} value="${E(RG.q)}" oninput="RG.q=this.value;paintCols()"><select id="colsel" class="w-full border rounded-lg p-2 mt-1" ${RG.mun?'':'disabled'} onchange="RG.col=this.value">${colOpts()}</select></label>`}
+    <label class="text-sm flex items-center gap-2"><input type="checkbox" ${RG.otro?'checked':''} onchange="RG.otro=this.checked;render()"> Mi colegio no aparece en la lista</label>
+    <div class="text-sm"><div class="font-semibold mb-1">Grados en los que dictas clase</div><div class="flex flex-wrap gap-3">${[6,7,8,9,10,11].map(g=>`<label class="flex items-center gap-2"><input type="checkbox" ${RG.gs.includes(g)?'checked':''} onchange="togG(${g},this.checked)"> ${g}°</label>`).join('')}</div></div>
+    ${RG.gs.map(g=>`<label class="text-sm block">Cursos de ${g}° (separados por coma, ej.: A, B, C o 901, 902)<input class="w-full border rounded-lg p-2 mt-1" value="${E(RG.cur[g]||'')}" oninput="RG.cur[${g}]=this.value"></label>`).join('')}
+    <label class="text-sm block">Área<select class="w-full border rounded-lg p-2 mt-1" onchange="RG.area=this.value;RG.asg=[];render()"><option value="">Elige tu área…</option>${(D.areas||[]).map(a=>`<option ${a.nombre===RG.area?'selected':''}>${E(a.nombre)}</option>`).join('')}</select></label>
+    ${RG.area?`<div class="text-sm"><div class="font-semibold mb-1">Asignatura(s) que dictas</div><div class="flex flex-wrap gap-3">${asg.map(x=>`<label class="flex items-center gap-2"><input type="checkbox" ${RG.asg.includes(x.nombre)?'checked':''} onchange="togA('${E(x.nombre)}',this.checked)"> ${E(x.nombre)}</label>`).join('')}</div></div>`:''}
+    <button onclick="doAuth()" class="w-full py-2 bg-indigo-600 text-white rounded-lg">Enviar mi registro como docente</button></div>`;
+  }
+  const reg=m==='register';
+  return`<div class="max-w-md mx-auto mt-10 bg-white rounded-2xl shadow p-6 space-y-3">${head}
+  ${reg?`<input id="dc" inputmode="numeric" autocomplete="off" class="w-full border rounded-lg p-2" placeholder="Número de documento (sin puntos)"><input id="nm" class="w-full border rounded-lg p-2" placeholder="Nombre completo"><select id="gr" class="w-full border rounded-lg p-2">${[6,7,8,9,10,11].map(g=>`<option value="${g}">Grado ${g}°</option>`).join('')}</select><p class="text-xs text-slate-500">Tu contraseña inicial será tu número de documento. Después de entrar puedes cambiarla con el botón 🔑 Contraseña. Tu docente te asignará a tu curso si tu documento está en su lista.</p>`:''}
+  <input id="em" type="email" class="w-full border rounded-lg p-2" placeholder="Correo">${reg?'':'<input id="pw" type="password" class="w-full border rounded-lg p-2" placeholder="Contraseña (si eres estudiante, tu número de documento)" onkeydown="if(event.key===\'Enter\')doAuth()">'}
+  <button onclick="doAuth()" class="w-full py-2 bg-indigo-600 text-white rounded-lg">${reg?'Crear cuenta de estudiante':'Entrar'}</button>
+  ${reg?'':'<p class="text-xs text-slate-500 text-center">Estudiantes: tu contraseña inicial es tu número de documento.</p><button onclick="resend()" class="w-full text-xs text-slate-500 underline">Reenviar correo de confirmación</button>'}</div>`}
+function vPend(){const st=M.teacher_status,rej=st==='rechazado';return`<div class="max-w-md mx-auto mt-10 bg-white rounded-2xl shadow p-6 space-y-3 text-center"><div class="text-4xl">${rej?'⛔':'🕒'}</div><h2 class="text-xl font-bold">${rej?'Tu solicitud de docente no fue aprobada':'Tu cuenta de docente está pendiente de aprobación'}</h2><p class="text-sm text-slate-600">${rej?'Comunícate con el administrador de AULA360 si crees que es un error.':'El administrador revisará tus datos. Cuando te apruebe, vuelve a iniciar sesión y verás el panel de docente.'}</p><div class="text-left text-sm border rounded-xl p-3 space-y-1"><div><b>Nombre:</b> ${E(M.full_name)}</div><div><b>Correo:</b> ${E(M.email||'')}</div><div><b>Teléfono:</b> ${E(M.phone||'')}</div><div><b>Área:</b> ${E(M.area||'')}</div><div><b>Asignaturas:</b> ${E((M.asignaturas||[]).join(', '))}</div><div><b>Grados:</b> ${E((M.grados||[]).join('°, '))}${(M.grados||[]).length?'°':''}</div></div><button onclick="logout()" class="px-4 py-2 rounded-lg bg-slate-200">Salir</button></div>`}
+const dirTabs=()=>M.role==='rector'?[['dcol','🏫 Mi colegio'],['ddoc','👩‍🏫 Docentes'],['dhor','🗓 Horarios'],['asis','🕒 Asistencia docentes'],['asistencias','✋ Asistencias a clase'],['planeador','📋 Planeadores'],['saberimp','🎯 Saber 11'],['diag','🩺 Diagnósticos'],['dhist','🧾 Historial']]:[['dcol','🏫 Mi colegio'],['ddoc','👩‍🏫 Docentes'],['dhor','🗓 Horarios'],['asis','🕒 Asistencia docentes'],['asistencias','✋ Asistencias a clase'],['planeador','📋 Planeadores'],['saberimp','🎯 Saber 11'],['diag','🩺 Diagnósticos']];
+function vPendDir(){const st=M.teacher_status,rej=st==='rechazado',r=M.role==='rector'?'rector':'coordinador',quien=M.role==='rector'?'El administrador':'El rector de tu colegio o el administrador';return`<div class="max-w-md mx-auto mt-10 bg-white rounded-2xl shadow p-6 space-y-3 text-center"><div class="text-4xl">${rej?'⛔':'🕒'}</div><h2 class="text-xl font-bold">${rej?'Tu solicitud de '+r+' no fue aprobada':'Tu cuenta de '+r+' está pendiente de aprobación'}</h2><p class="text-sm text-slate-600">${rej?'Comunícate con el administrador de AULA360 si crees que es un error.':quien+' revisará tus datos. Cuando te apruebe, vuelve a iniciar sesión.'}</p><div class="text-left text-sm border rounded-xl p-3 space-y-1"><div><b>Nombre:</b> ${E(M.full_name)}</div><div><b>Correo:</b> ${E(M.email||'')}</div><div><b>Teléfono:</b> ${E(M.phone||'')}</div></div><button onclick="logout()" class="px-4 py-2 rounded-lg bg-slate-200">Salir</button></div>`}
+function vDoc(){
+  const ds=D.docs||[],badge=s=>s==='aprobado'?'✅ Aprobado':s==='rechazado'?'⛔ Rechazado':'🕒 Pendiente';
+  const sch=d=>d.colegios?`${E(d.colegios.nombre)} · ${E(d.colegios.municipios?.nombre||'')} (${E(d.colegios.municipios?.departamentos?.nombre||'')})`:(d.school_other?E(d.school_other)+' (colegio escrito por el docente)':'—');
+  const asgE=(D.asigs||[]).filter(x=>x.area===ED.area);
+  const form=d=>ED.id===d.id?`<div class="border-t mt-3 pt-3 space-y-3"><div class="grid sm:grid-cols-2 gap-3"><label class="text-sm">Nombre<input class="w-full border rounded-lg p-2 mt-1" value="${E(ED.nm)}" oninput="ED.nm=this.value"></label><label class="text-sm">Teléfono<input class="w-full border rounded-lg p-2 mt-1" value="${E(ED.tel)}" oninput="ED.tel=this.value"></label></div>
+  <label class="text-sm block">Área<select class="w-full border rounded-lg p-2 mt-1" onchange="ED.area=this.value;ED.asg=[];render()"><option value="">Elige el área…</option>${(D.areas||[]).map(a=>`<option ${a.nombre===ED.area?'selected':''}>${E(a.nombre)}</option>`).join('')}</select></label>
+  ${ED.area?`<div class="text-sm"><div class="font-semibold mb-1">Asignatura(s)</div><div class="flex flex-wrap gap-3">${asgE.map(x=>`<label class="flex items-center gap-2"><input type="checkbox" ${ED.asg.includes(x.nombre)?'checked':''} onchange="togEA('${E(x.nombre)}',this.checked)"> ${E(x.nombre)}</label>`).join('')}</div></div>`:''}
+  <div class="text-sm"><div class="font-semibold mb-1">Grados en los que dicta</div><div class="flex flex-wrap gap-3">${[6,7,8,9,10,11].map(g=>`<label class="flex items-center gap-2"><input type="checkbox" ${ED.gs.includes(g)?'checked':''} onchange="togEG(${g},this.checked)"> ${g}°</label>`).join('')}</div></div>
+  <div class="flex gap-2"><button onclick="saveDoc()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm">Guardar cambios</button><button onclick="ED.id='';render()" class="px-4 py-2 rounded-lg bg-slate-200 text-sm">Cancelar</button></div></div>`:'';
+  return`<div class="space-y-4"><div class="bg-white rounded-2xl p-4 shadow"><h2 class="text-xl font-bold">👩‍🏫 Docentes</h2><p class="text-sm text-slate-600">Cada docente aprobado ve solo sus propios cursos, estudiantes y notas, y solo el banco de preguntas de su asignatura. Aquí apruebas, rechazas y editas su área, asignaturas y grados.</p></div>
+  ${ds.length?ds.map(d=>`<div class="bg-white rounded-2xl p-4 shadow"><div class="flex flex-wrap items-center justify-between gap-2"><div><div class="font-semibold">${E(d.full_name)} <span class="text-xs text-slate-500">${badge(d.teacher_status)}${d.is_admin?' · administrador':''}</span></div><div class="text-xs text-slate-500">${E(d.email||'')} · ${E(d.phone||'')}</div><div class="text-xs text-slate-500">${sch(d)}</div>${d.area?`<div class="text-xs text-slate-500">Área: ${E(d.area)} · Asignaturas: ${E((d.asignaturas||[]).join(', '))}</div>`:'<div class="text-xs text-red-600">Sin área ni asignatura: no ve preguntas</div>'}${(d.grados||[]).length?`<div class="text-xs text-slate-500">Grados: ${d.grados.map(g=>g+'°').join(', ')}</div>`:''}${(d.courses||[]).length?`<div class="text-xs text-slate-500">Cursos: ${[...d.courses].sort((a,b)=>a.grade-b.grade||String(a.name).localeCompare(String(b.name))).map(c=>c.grade+'° '+E(c.name)).join(', ')}</div>`:''}</div><div class="flex flex-wrap gap-2"><button onclick="editDoc('${d.id}')" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs">Editar</button>${d.is_admin?'':`${d.teacher_status!=='aprobado'?`<button onclick="setDoc('${d.id}','aprobado')" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs">Aprobar</button>`:''}${d.teacher_status==='pendiente'?`<button onclick="setDoc('${d.id}','rechazado')" class="px-3 py-1.5 rounded-lg bg-slate-200 text-xs">Rechazar</button>`:''}${d.teacher_status==='aprobado'?`<button onclick="setDoc('${d.id}','pendiente')" class="px-3 py-1.5 rounded-lg bg-slate-200 text-xs">Quitar permiso</button>`:''}`}</div></div>${form(d)}</div>`).join(''):'<div class="bg-white rounded-2xl p-6 shadow text-center text-slate-600">Aún no hay docentes registrados.</div>'}</div>`}
+function vImp(){
+  const cs=D.courses||[],av=D.avail||{},c=cs.find(x=>x.id===PJ.c),L=LH();
+  const subs=c?Object.keys(av[c.grade]||{}).sort():[];
+  if(c&&!subs.includes(PJ.s))PJ.s=subs[0]||'';
+  const have=c&&PJ.s?((av[c.grade]||{})[PJ.s]||0):0,max=Math.min(120,have-1);
+  if(PJ.n>max)PJ.n=Math.max(10,max);if(PJ.n<10)PJ.n=10;
+  const J=D.job,sts=J?[...new Map(J.exams.map(e=>[e.roster_id,e.roster?.full_name])).entries()]:[],vers=J?[...new Set(J.exams.map(e=>e.version))].sort():[];
+  return`<div class="space-y-4">${isDir()?editorMembrete():''}
+  <div class="bg-white rounded-2xl p-4 shadow space-y-3"><h2 class="text-xl font-bold">🖨️ 1. Generar exámenes para imprimir</h2><p class="text-sm text-slate-600">Cada estudiante de la lista recibe <b>${PJ.v} exámenes distintos</b> (versiones ${[...Array(PJ.v).keys()].map(i=>vl(i+1)).join(', ')}), cada uno con su código, su nombre, su número de documento y su hoja de respuestas. Para que salga el documento, la lista del curso debe traerlo.</p>
+  <div class="grid sm:grid-cols-2 gap-3"><label class="text-sm">Curso<select class="w-full border rounded-lg p-2 mt-1" onchange="PJ.c=this.value;PJ.s='';PJ.refs=[];D.cat=[];D.catKey='';render()"><option value="">Elige un curso</option>${cs.map(x=>`<option value="${x.id}" ${x.id===PJ.c?'selected':''}>${x.grade}° ${E(x.name)} (${(D.rcount||{})[x.id]||0} en lista)</option>`).join('')}</select></label>
+  <label class="text-sm">Materia<select class="w-full border rounded-lg p-2 mt-1" ${c?'':'disabled'} onchange="PJ.s=this.value;PJ.refs=[];D.catKey='';render()">${subs.length?subs.map(s=>`<option ${s===PJ.s?'selected':''}>${E(s)}</option>`).join(''):'<option>(elige un curso con preguntas visibles)</option>'}</select></label>
+  <label class="text-sm">Nombre del examen<input class="w-full border rounded-lg p-2 mt-1" value="${E(PJ.t)}" oninput="PJ.t=this.value" placeholder="Ej: Evaluación de Química · Periodo 2"></label>
+  <label class="text-sm">Fecha del examen (opcional)<input type="date" class="w-full border rounded-lg p-2 mt-1" value="${E(PJ.d)}" onchange="PJ.d=this.value"></label>
+  <label class="text-sm">Preguntas por examen (mínimo 10, máximo ${Math.max(10,max)})<input type="number" min="10" max="${Math.max(10,max)}" class="w-full border rounded-lg p-2 mt-1" value="${PJ.n}" onchange="PJ.n=+this.value;render()"></label>
+  <label class="text-sm">Versiones por estudiante (mínimo 3)<input type="number" min="3" max="6" class="w-full border rounded-lg p-2 mt-1" value="${PJ.v}" onchange="PJ.v=Math.max(3,Math.min(6,+this.value||3));render()"></label></div>
+  ${c?`<p class="text-xs text-slate-500">Hay ${have} preguntas visibles de ${E(PJ.s)} para ${c.grade}°. Se necesitan al menos ${PJ.n+1} para que las versiones sean distintas.</p>`:''}
+  ${(()=>{const key=c&&PJ.s?c.grade+'|'+PJ.s:'';if(key&&D.catKey!==key){D.catKey=key;setTimeout(loadRefs,0)}return refPicker()})()}
+  <button onclick="createJob()" class="px-5 py-2 bg-indigo-600 text-white rounded-lg">Generar exámenes</button></div>
+  <div class="bg-white rounded-2xl p-4 shadow space-y-2"><h3 class="font-semibold">Exámenes generados</h3>${(D.jobs||[]).length?(D.jobs||[]).map(j=>`<div class="flex flex-wrap items-center justify-between gap-2 border rounded-xl p-3"><div><div class="font-semibold">${E(j.title)}</div><div class="text-xs text-slate-500">${j.courses?j.courses.grade+'° '+E(j.courses.name):''} · ${E(j.subject)} · ${j.n_questions} preguntas · ${j.versions} versiones${j.exam_date?' · '+fch(j.exam_date):''}</div></div><div class="flex gap-2"><button onclick="openJob('${j.id}')" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs">Abrir para imprimir</button><button onclick="delJob('${j.id}','${E(j.title).replace(/'/g,'')}')" class="px-3 py-1.5 rounded-lg bg-slate-200 text-xs">Borrar</button></div></div>`).join(''):'<p class="text-sm text-slate-500">Aún no has generado ningún examen.</p>'}</div>
+  ${J?`<div id="jobbox" class="bg-white rounded-2xl p-4 shadow space-y-3"><h2 class="text-xl font-bold">📄 ${E(J.job.title)}</h2><p class="text-sm text-slate-600">${J.exams.length} exámenes (${sts.length} estudiantes × ${vers.length} versiones) · ${J.job.n_questions} preguntas cada uno. Al pulsar un botón se abre la ventana de impresión; también puedes elegir «Guardar como PDF».</p>
+  <div class="grid sm:grid-cols-2 gap-3"><label class="text-sm">Estudiante<select class="w-full border rounded-lg p-2 mt-1" onchange="PJ.st=this.value"><option value="">Todos los estudiantes</option>${sts.map(([id,n])=>`<option value="${id}" ${id===PJ.st?'selected':''}>${E(n)}</option>`).join('')}</select></label><label class="text-sm">Versión<select class="w-full border rounded-lg p-2 mt-1" onchange="PJ.ver=this.value"><option value="">Todas las versiones</option>${vers.map(x=>`<option value="${x}" ${String(x)===PJ.ver?'selected':''}>Versión ${vl(x)}</option>`).join('')}</select></label></div>
+  <div class="flex flex-wrap gap-2"><button onclick="previewJob()" class="px-4 py-2 rounded-lg bg-amber-500 text-white">👁️ Vista previa</button><button onclick="printKind('ex')" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">🖨️ Imprimir cuadernillos</button><button onclick="printKind('sh')" class="px-4 py-2 rounded-lg bg-indigo-600 text-white">🖨️ Imprimir hojas de respuestas</button><button onclick="printKind('key')" class="px-4 py-2 rounded-lg bg-slate-200">🔑 Imprimir claves (solo docente)</button></div>
+  <p class="text-xs text-slate-500">Las preguntas que son una imagen traen impreso su número original; para impresión funcionan mejor las preguntas escritas en texto.</p></div>`:''}</div>`}
+function vStim(q){return q.stimulus_content?`<div class="rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm">${q.stimulus_title?`<div class="font-semibold mb-2">${E(q.stimulus_title)}</div>`:''}<div style="white-space:pre-wrap">${E(q.stimulus_content)}</div></div>`:''}
+function qImg(q){return`<img src="${IMG}${encodeURI(q.image_path)}" alt="${E(q.body)}" loading="lazy" style="max-width:100%;height:auto;display:block;margin:0 auto;border:1px solid #e2e8f0;border-radius:12px;background:#fff">`}
+function vQBody(q,big){return q.image_path?qImg(q):vStim(q)+`<p class="${big?'text-lg':'font-semibold'}">${E(q.body)}</p>`}
+const optT=(q,i)=>q.image_path?'ABCD'[i]:E(q.options[i]);
+function vSim(){
+  if(RES){const r=RES;return`<div class="bg-white rounded-2xl p-6 shadow text-center space-y-4"><div class="text-5xl">${r.score>=80?'🎉':r.score>=50?'👏':'💪'}</div><h2 class="text-2xl font-bold">Resultado: ${r.score}/100</h2><p class="text-slate-600">${r.correct} de ${r.total} correctas${r.auto?' · Tiempo agotado, se calificó lo respondido.':''}</p>
+  <div class="text-left space-y-2">${r.qs.map(q=>{const c=r.key[q.id],ok=r.ans[q.id]===c,ex=r.exp?.[q.id];return`<div class="p-3 rounded-lg ${ok?'bg-emerald-50':'bg-rose-50'} text-sm space-y-2">${vQBody(q,false)}<div>Correcta: ${optT(q,c)} · Tu respuesta: ${r.ans[q.id]==null?'—':optT(q,r.ans[q.id])}</div>${ex?`<div class="text-slate-600">💡 ${E(ex)}</div>`:''}</div>`}).join('')}</div>
+  <button onclick="RES=null;go('sim')" class="px-5 py-2 bg-indigo-600 text-white rounded-lg">Volver a mis simulacros</button></div>`}
+  if(S){const q=S.qs[S.i],im=!!q.image_path;return`<div class="bg-white rounded-2xl p-5 shadow space-y-4"><div class="flex justify-between items-center"><div><div class="text-xs text-slate-500">${E(S.title)} · ${E(S.subject)}</div><div class="font-semibold">Pregunta ${S.i+1} de ${S.qs.length}</div></div><div class="text-right"><div class="text-xs text-slate-500">Tiempo restante</div><div id="clk" class="font-mono text-2xl font-bold text-indigo-700">${fmt(S.left)}</div></div></div>
+  <div class="h-2 bg-slate-200 rounded"><div class="h-2 bg-indigo-500 rounded" style="width:${S.left/S.total*100}%"></div></div>${vQBody(q,true)}
+  <div class="${im?'':'grid gap-2'}" style="${im?'display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem':''}">${q.options.map((o,k)=>`<button onclick="S.ans['${q.id}']=${k};render()" class="${im?'text-center':'text-left'} p-3 rounded-lg border ${S.ans[q.id]===k?'border-indigo-600 bg-indigo-50':'border-slate-200 hover:bg-slate-50'}"><b>${'ABCD'[k]}${im?'':'.'}</b>${im?'':' '+E(o)}</button>`).join('')}</div>
+  <div class="flex justify-between"><button ${S.i?'':'disabled'} onclick="S.i--;render()" class="px-4 py-2 rounded-lg bg-slate-200 disabled:opacity-40">← Anterior</button>${S.i<S.qs.length-1?`<button onclick="S.i++;render()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white">Siguiente →</button>`:`<button onclick="finish(false)" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">Finalizar y calificar</button>`}</div></div>`}
+  if(!M.course_id)return`<div class="bg-white rounded-2xl p-6 shadow text-center space-y-2"><div class="text-4xl">🕒</div><h2 class="text-xl font-bold">Tu docente aún no te ha asignado a un curso</h2><p class="text-sm text-slate-600">Cuando lo haga, aquí verás los simulacros y las tareas de tu curso.</p></div>`;
+  const av=D.avail||{},sims=(D.sims||[]).filter(s=>s.active);
+  return`<div class="space-y-4"><div class="bg-white rounded-2xl p-4 shadow"><h2 class="text-xl font-bold">📌 Mis simulacros y tareas</h2><p class="text-sm text-slate-600">Tu curso: <b>${D.myc?D.myc.grade+'° '+E(D.myc.name):''}</b></p></div>
+  ${sims.length?sims.map(s=>{const a=(D.att||{})[s.id]||{n:0,best:null},have=(av[s.grade]||{})[s.subject]||0,exp=s.due_at&&new Date(s.due_at)<new Date(),left=s.max_attempts-a.n,can=!exp&&left>0&&have>=s.n_questions;
+  return`<div class="bg-white rounded-2xl p-4 shadow space-y-2"><div class="flex flex-wrap items-center justify-between gap-2"><div><div class="font-semibold">${s.kind==='tarea'?'📘 Tarea':'📝 Simulacro'} · ${E(s.title)}</div><div class="text-xs text-slate-500">${E(s.subject)} · ${s.n_questions} preguntas · ${s.n_questions*s.minutes_per_question} min · Intentos: ${a.n} de ${s.max_attempts}${a.n?' · Tu mejor puntaje: '+a.best:''}</div>${s.due_at?`<div class="text-xs ${exp?'text-red-600':'text-slate-500'}">${exp?'⛔ Venció el ':'Fecha límite: '}${new Date(s.due_at).toLocaleDateString('es-CO')}</div>`:''}</div>${can?`<button onclick="startSim('${s.id}')" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm">${a.n?'Intentar de nuevo':'Comenzar'}</button>`:`<span class="text-xs text-slate-500">${exp?'Cerrado':left<=0?'✅ Ya lo presentaste':'No disponible'}</span>`}</div>${s.description?`<div class="text-sm text-slate-600" style="white-space:pre-wrap">${E(s.description)}</div>`:''}</div>`}).join(''):`<div class="bg-white rounded-2xl p-6 shadow text-center text-slate-600">Todavía no tienes simulacros ni tareas asignados. Tu docente los publicará aquí.</div>`}</div>`}
+function vCur(){
+  const cs=D.courses||[],stu=D.stu||[],all=D.roster||[],ro=all.filter(r=>r.email&&!stu.some(u=>(u.email||'')===r.email));
+  const cname=id=>{const c=cs.find(x=>x.id===id);return c?c.grade+'° '+c.name:'—'},cur=cs.find(c=>c.id===RF.c);
+  return`<div class="space-y-4"><div class="bg-white rounded-2xl p-4 shadow space-y-3"><h2 class="text-xl font-bold">👥 Mis cursos</h2>
+  <div class="grid sm:grid-cols-3 gap-3"><label class="text-sm">Grado<select class="w-full border rounded-lg p-2 mt-1" onchange="CF.g=+this.value">${misGrados().map(g=>`<option ${g==CF.g?'selected':''}>${g}</option>`).join('')}</select></label>
+  <label class="text-sm">Nombre del curso<input class="w-full border rounded-lg p-2 mt-1" value="${E(CF.name)}" oninput="CF.name=this.value" placeholder="Ej: A o 901"></label><div class="flex items-center"><button onclick="createCourse()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">Agregar curso</button></div></div>
+  ${cs.length?`<div class="space-y-2">${cs.map(c=>`<div class="flex flex-wrap items-center justify-between gap-2 border rounded-xl p-3"><div><b>${c.grade}° ${E(c.name)}</b> <span class="text-xs text-slate-500">· ${all.filter(r=>r.course_id===c.id).length} en la lista · ${stu.filter(u=>u.course_id===c.id).length} con cuenta</span></div><button onclick="delCourse('${c.id}','${E(c.name).replace(/'/g,'')}')" class="px-3 py-1.5 rounded-lg bg-slate-200 text-xs">Borrar</button></div>`).join('')}</div>`:'<p class="text-sm text-slate-500">Aún no tienes cursos.</p>'}</div>
+  <div class="bg-white rounded-2xl p-4 shadow space-y-3"><h2 class="text-xl font-bold">📋 Cargar la lista de un curso</h2><div class="rounded-xl p-3" style="background:#f0f9ff;border:1px solid #bae6fd"><b class="text-sm">¿El rector ya subió el listado del colegio?</b><div class="text-xs text-slate-600 my-1">Elige abajo el curso y pulsa el botón: trae a tus estudiantes del mismo grado y grupo.</div><button onclick="traerListaColegio()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">📥 Traer el listado del colegio al curso elegido</button></div><p class="text-sm text-slate-600">Cada fila debe traer el <b>nombre</b> y el <b>número de documento</b> del estudiante (el documento sale en los exámenes impresos) y, si lo tienes, su <b>correo</b>: con el correo, el estudiante queda en su curso cuando se registre y puede presentar simulacros en la plataforma. Sin correo solo sirve para imprimir.</p>
+  <div class="grid sm:grid-cols-2 gap-3"><label class="text-sm">1. Curso de esta lista<select class="w-full border rounded-lg p-2 mt-1" onchange="RF.c=this.value;render()"><option value="">Elige un curso</option>${cs.map(c=>`<option value="${c.id}" ${c.id===RF.c?'selected':''}>${c.grade}° ${E(c.name)}</option>`).join('')}</select></label>
+  <label class="text-sm">2. Formato en que vas a subir la lista<select class="w-full border rounded-lg p-2 mt-1" onchange="RF.f=this.value;RF.rows=[];RF.skip=0;RF.fname='';render()"><option value="excel" ${RF.f==='excel'?'selected':''}>Excel o CSV (.xlsx, .xls, .csv)</option><option value="word" ${RF.f==='word'?'selected':''}>Word (.docx)</option><option value="pdf" ${RF.f==='pdf'?'selected':''}>PDF (con texto, no escaneado)</option><option value="text" ${RF.f==='text'?'selected':''}>Escribir o pegar la lista</option></select></label></div>
+  ${RF.f==='text'?`<label class="text-sm block">3. Escribe o pega la lista, una línea por estudiante (Nombre, documento, correo)<textarea class="w-full border rounded-lg p-2 mt-1 text-sm" rows="6" oninput="RF.txt=this.value" placeholder="Ana Pérez, 1001234567, ana@correo.com&#10;Luis Gómez, 1002345678">${E(RF.txt)}</textarea></label><button onclick="reviewText()" class="px-4 py-2 rounded-lg bg-slate-200">Revisar la lista</button>`:`<label class="text-sm block">3. Elige el archivo ${FMT[RF.f]}<input type="file" accept="${ACC[RF.f]}" class="w-full border rounded-lg p-2 mt-1" onchange="pickFile(this.files[0])"></label>${RF.f==='word'?'<p class="text-xs text-slate-500">Si tu archivo es .doc (Word antiguo), ábrelo en Word y guárdalo como .docx.</p>':''}`}
+  ${(RF.bad&&RF.bad.length)||(RF.sk&&RF.sk.length)?`<div class="rounded-xl p-3 space-y-2" style="background:#fef2f2;border:1px solid #fca5a5"><div class="text-sm font-semibold" style="color:#b91c1c">${RF.bad&&RF.bad.length?`⛔ ${RF.bad.length} fila(s) incompletas. No se puede cargar la lista hasta corregirlas.`:'⚠️ Hay filas ignoradas'}</div>${(RF.bad||[]).slice(0,30).map(b=>`<div class="text-xs"><b>${E(b.l)}</b> → ${E(b.why)}</div>`).join('')}${RF.sk&&RF.sk.length?`<div class="text-xs text-slate-600 pt-1">${RF.skip} línea(s) sin documento fueron ignoradas (pueden ser títulos). Si alguna es un estudiante, agrégale el documento: ${RF.sk.map(x=>E(x)).join(' · ')}</div>`:''}</div>`:''}
+  ${RF.rows.length?`<div class="border rounded-xl p-3 space-y-2"><div class="text-sm"><b>${RF.rows.length}</b> estudiantes encontrados${RF.fname?' en <b>'+E(RF.fname)+'</b>':''}. Revisa que estén bien antes de cargar.</div><div class="overflow-x-auto"><table class="w-full text-sm"><tr class="text-left text-slate-500"><th>#</th><th>Nombre</th><th>Documento</th><th>Correo</th></tr>${RF.rows.slice(0,100).map((r,i)=>`<tr class="border-t"><td>${i+1}</td><td>${E(r.full_name)}</td><td>${E(r.document||'—')}</td><td>${E(r.email||'—')}</td></tr>`).join('')}</table></div>${RF.rows.length>100?'<p class="text-xs text-slate-500">Se muestran los primeros 100.</p>':''}<button onclick="loadRoster()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">4. Cargar ${RF.rows.length} estudiantes${cur?' en '+cur.grade+'° '+E(cur.name):''}</button></div>`:''}</div>
+  ${ro.length?`<div class="bg-white rounded-2xl p-4 shadow space-y-2"><h3 class="font-semibold">En lista con correo, pendientes de registrarse (${ro.length})</h3>${ro.map(r=>`<div class="flex flex-wrap items-center justify-between gap-2 text-sm border-t pt-2"><span>${E(r.full_name)} · ${E(r.email)} · ${cname(r.course_id)}</span><button onclick="delRoster('${r.id}')" class="px-3 py-1.5 rounded-lg bg-slate-200 text-xs">Quitar</button></div>`).join('')}</div>`:''}
+  <div class="bg-white rounded-2xl p-4 shadow overflow-x-auto"><h3 class="font-semibold mb-2">Mis estudiantes con cuenta (${stu.length})</h3>${stu.length?`<table class="w-full text-sm"><tr class="text-left text-slate-500"><th>Nombre</th><th>Correo</th><th>Grado</th><th>Curso</th></tr>${stu.map(u=>`<tr class="border-t"><td>${E(u.full_name)}</td><td>${E(u.email||'')}</td><td>${u.grade??''}°</td><td><select class="border rounded-lg p-2 text-sm" onchange="setCourse('${u.id}',this.value)"><option value="">Sin curso</option>${cs.map(c=>`<option value="${c.id}" ${c.id===u.course_id?'selected':''}>${c.grade}° ${E(c.name)}</option>`).join('')}</select></td></tr>`).join('')}</table>`:'<p class="text-sm text-slate-500">Aún no tienes estudiantes con cuenta. Carga la lista de un curso.</p>'}</div></div>`}
+function vSimP(){
+  const av=D.avail||{},gs=Object.keys(av).map(Number).sort((a,b)=>a-b),cs=D.courses||[];
+  if(!gs.length)return`<div class="bg-white rounded-2xl p-6 shadow text-center text-slate-600">No hay preguntas visibles de tu asignatura para activar un simulacro. Cuando el administrador las active, aparecerán aquí.</div>`;
+  if(!av[SF.g])SF.g=gs[gs.length-1];
+  const subs=Object.keys(av[SF.g]).sort();
+  if(!av[SF.g][SF.s])SF.s=subs[0];
+  const have=av[SF.g][SF.s],max=Math.min(have,120);
+  if(SF.n>max)SF.n=max;
+  const gc=cs.filter(c=>c.grade===SF.g),sims=D.sims||[],kn=SF.k==='tarea'?'tarea':'simulacro';
+  return`<div class="space-y-4"><div class="bg-white rounded-2xl p-4 shadow space-y-3"><h2 class="text-xl font-bold">🚀 Activar un simulacro o una tarea</h2>
+  <div class="grid sm:grid-cols-2 gap-3"><label class="text-sm">Tipo<select class="w-full border rounded-lg p-2 mt-1" onchange="SF.k=this.value;render()"><option value="simulacro" ${SF.k==='simulacro'?'selected':''}>Simulacro</option><option value="tarea" ${SF.k==='tarea'?'selected':''}>Tarea</option></select></label>
+  <label class="text-sm">Nombre<input class="w-full border rounded-lg p-2 mt-1" value="${E(SF.t)}" oninput="SF.t=this.value" placeholder="Ej: Química · Simulacro 1"></label>
+  <label class="text-sm">Grado<select class="w-full border rounded-lg p-2 mt-1" onchange="SF.g=+this.value;SF.s='';SF.cs=[];render()">${gs.map(g=>`<option ${g==SF.g?'selected':''}>${g}</option>`).join('')}</select></label>
+  <label class="text-sm">Materia<select class="w-full border rounded-lg p-2 mt-1" onchange="SF.s=this.value;render()">${subs.map(s=>`<option ${s==SF.s?'selected':''}>${E(s)}</option>`).join('')}</select></label>
+  <label class="text-sm">Número de preguntas (máx. ${max})<input type="number" min="1" max="${max}" class="w-full border rounded-lg p-2 mt-1" value="${SF.n}" onchange="SF.n=+this.value;render()"></label>
+  <label class="text-sm">Minutos por pregunta<input type="number" min="1" max="10" class="w-full border rounded-lg p-2 mt-1" value="${SF.m}" onchange="SF.m=+this.value;render()"></label>
+  <label class="text-sm">Intentos permitidos<input type="number" min="1" max="10" class="w-full border rounded-lg p-2 mt-1" value="${SF.a}" onchange="SF.a=+this.value"></label>
+  <label class="text-sm">Fecha límite (opcional)<input type="date" class="w-full border rounded-lg p-2 mt-1" value="${E(SF.due)}" onchange="SF.due=this.value"></label></div>
+  <label class="text-sm block">Instrucciones para los estudiantes (opcional)<textarea class="w-full border rounded-lg p-2 mt-1" rows="2" oninput="SF.desc=this.value">${E(SF.desc)}</textarea></label>
+  <div class="text-sm"><div class="font-semibold mb-2">Activar para los cursos de ${SF.g}°:</div>${gc.length?`<div class="flex flex-wrap gap-3">${gc.map(c=>`<label class="flex items-center gap-2"><input type="checkbox" ${SF.cs.includes(c.id)?'checked':''} onchange="togC('${c.id}',this.checked)"> ${E(c.name)}</label>`).join('')}<button onclick="allC()" class="px-3 py-1 rounded-lg bg-slate-200 text-xs">Marcar todos</button></div>`:'<p class="text-slate-500">No tienes cursos de este grado. Agrégalos en la pestaña Cursos y estudiantes.</p>'}</div>
+  <p class="text-xs text-slate-500">Hay ${have} preguntas visibles en ${E(SF.s)} (${SF.g}°). Tiempo total: <b>${SF.n*SF.m} minutos</b>. Cada estudiante recibe ${SF.n} preguntas al azar.</p>
+  <button onclick="createSim()" class="px-5 py-2 bg-emerald-600 text-white rounded-lg">Activar ${kn}</button></div>
+  <div class="bg-white rounded-2xl p-4 shadow space-y-3"><h3 class="font-semibold">Simulacros y tareas activados</h3>${sims.length?sims.map(s=>{const asg=(s.simulacro_targets||[]).map(t=>t.course_id),free=cs.filter(c=>c.grade===s.grade&&!asg.includes(c.id));return`<div class="border rounded-xl p-3 space-y-2 ${s.active?'':'bg-slate-100'}"><div class="flex flex-wrap items-center justify-between gap-2"><div><div class="font-semibold">${s.kind==='tarea'?'📘 Tarea':'📝 Simulacro'} · ${E(s.title)}</div><div class="text-xs text-slate-500">${s.grade}° · ${E(s.subject)} · ${s.n_questions} preguntas · ${s.minutes_per_question} min c/u · ${s.max_attempts} intento(s)${s.due_at?' · hasta '+new Date(s.due_at).toLocaleDateString('es-CO'):''} · ${s.active?'👁 Activo':'🚫 Desactivado'}</div></div><div class="flex gap-2"><button onclick="setSim('${s.id}',{active:${!s.active}})" class="px-3 py-1.5 rounded-lg ${s.active?'bg-slate-200':'bg-emerald-600 text-white'} text-xs">${s.active?'Desactivar':'Activar'}</button><button onclick="delSim('${s.id}','${E(s.title).replace(/'/g,'')}')" class="px-3 py-1.5 rounded-lg bg-slate-200 text-xs">Borrar</button></div></div>
+  <div class="flex flex-wrap items-center gap-2 text-xs"><span class="text-slate-500">Cursos:</span>${asg.length?asg.map(id=>`<span class="px-3 py-1 rounded-lg bg-indigo-50 border border-indigo-600">${E((cs.find(c=>c.id===id)||{name:'?'}).name)} <a href="#" onclick="delT('${s.id}','${id}');return false" class="text-red-600">✕</a></span>`).join(''):'<span class="text-red-600">Sin cursos: nadie lo ve</span>'}${free.length?`<select id="add_${s.id}" class="border rounded-lg p-2"><option value="">Agregar curso…</option>${free.map(c=>`<option value="${c.id}">${E(c.name)}</option>`).join('')}</select><button onclick="addT('${s.id}')" class="px-3 py-1.5 rounded-lg bg-slate-200">Agregar</button>`:''}</div></div>`}).join(''):'<p class="text-sm text-slate-500">Aún no has activado ninguno.</p>'}</div></div>`}
+function vMed(){const md=D.medals||{};return`<div class="bg-white rounded-2xl p-6 shadow"><h2 class="text-xl font-bold mb-4">🏆 Panel de trofeos</h2><div class="grid sm:grid-cols-3 gap-3">${Object.entries(MEDALS).map(([k,m])=>{const on=md[k];return`<div class="p-4 rounded-xl border text-center ${on?'bg-amber-50 border-amber-300':'bg-slate-50 opacity-60'}"><div class="text-4xl ${on?'':'grayscale'}">${m[0]}</div><div class="font-semibold mt-1">${m[1]}</div><div class="text-xs text-slate-600">${m[2]}</div><div class="text-xs mt-1">${on?'✅ '+new Date(on).toLocaleDateString('es-CO'):'🔒 Bloqueada'}</div></div>`}).join('')}</div></div>`}
+function vEst(){return(D.mine||[]).length?`<div class="grid md:grid-cols-2 gap-4"><div class="bg-white rounded-2xl p-4 shadow"><h3 class="font-semibold mb-2">Rendimiento por materia</h3><canvas id="c1"></canvas></div><div class="bg-white rounded-2xl p-4 shadow"><h3 class="font-semibold mb-2">Evolución de puntajes</h3><canvas id="c2"></canvas></div></div>`:`<div class="bg-white rounded-2xl p-6 shadow text-center text-slate-600">Aún no tienes intentos. ¡Presenta tu primer simulacro!</div>`}
+function vLb(){return`<div class="bg-white rounded-2xl p-4 shadow"><h3 class="font-semibold mb-2">🏅 Leaderboard${M.role==='prof'?' de tus estudiantes':' de tu curso'}</h3><table class="w-full text-sm"><tr class="text-left text-slate-500"><th>#</th><th>Estudiante</th><th>Grado</th><th>Prom.</th></tr>${(D.lb||[]).map((r,i)=>`<tr class="border-t"><td>${['🥇','🥈','🥉'][i]||i+1}</td><td>${E(r.full_name)}</td><td>${r.grade??''}°</td><td class="font-bold">${r.avg_score}</td></tr>`).join('')}</table></div>`}
+function vProf(){return window.AulaDashboard?AulaDashboard.view(D,M):'<div class="bg-white rounded-2xl p-6">Cargando dashboard…</div>'}
+function vPreg(){
+  const bar=`<div class="bg-white rounded-2xl p-3 shadow mb-3 flex flex-wrap gap-2 items-center"><span class="text-sm">¿Quieres agregar tus propias preguntas al banco?</span><button onclick="go('subirp')" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm">📥 Subir preguntas (PDF, Word o escribirlas)</button></div>`;
+  return bar+vPreg0();
+}
+function vPreg0(){
+  const adm=!!M.is_admin,av=D.pav||{},gs=Object.keys(av).map(Number).sort((a,b)=>a-b);
+  if(!gs.length)return`<div class="bg-white rounded-2xl p-6 shadow text-center text-slate-600">No hay preguntas visibles de tu asignatura todavía.</div>`;
+  const subs=Object.keys(av[QF.g]||{}).sort(),st=D.pstat||{on:0,rev:0,tot:0},pages=Math.max(1,Math.ceil((D.pn||0)/10));
+  const F=[['all','Todas'],['on','Visibles'],['off','Ocultas'],['draft','En borrador'],['rev','Revisadas']];
+  return`<div class="space-y-4"><div class="bg-white rounded-2xl p-4 shadow space-y-3"><h2 class="text-xl font-bold">📚 ${adm?'Revisión del banco de preguntas':'Banco de preguntas de tu asignatura'}</h2>${adm?'':`<p class="text-sm text-slate-600">Ves las preguntas activas de tu asignatura (${E((M.asignaturas||[]).join(', '))}). Solo el administrador puede revisarlas, activarlas u ocultarlas.</p>`}
+  <div class="grid sm:grid-cols-3 gap-3"><label class="text-sm">Grado<select class="w-full border rounded-lg p-2 mt-1" onchange="QF.g=+this.value;QF.s='';QF.p=0;go('preg')">${gs.map(g=>`<option ${g==QF.g?'selected':''}>${g}</option>`).join('')}</select></label>
+  <label class="text-sm">Materia<select class="w-full border rounded-lg p-2 mt-1" onchange="QF.s=this.value;QF.p=0;go('preg')">${subs.map(s=>`<option ${s==QF.s?'selected':''}>${E(s)}</option>`).join('')}</select></label>
+  ${adm?`<label class="text-sm">Mostrar<select class="w-full border rounded-lg p-2 mt-1" onchange="QF.f=this.value;QF.p=0;go('preg')">${F.map(([k,l])=>`<option value="${k}" ${k==QF.f?'selected':''}>${l}</option>`).join('')}</select></label>`:''}</div>
+  <p class="text-sm text-slate-600">${E(QF.s)} · ${QF.g}°: <b>${st.tot}</b> preguntas${adm?` · <b>${st.on}</b> visibles para estudiantes · <b>${st.rev}</b> revisadas`:''}</p>
+  ${adm?`<div class="flex flex-wrap gap-2"><button onclick="bulk({active:true},'Mostrar')" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm">Mostrar todas</button><button onclick="bulk({active:false},'Ocultar')" class="px-4 py-2 rounded-lg bg-slate-200 text-sm">Ocultar todas</button><button onclick="bulk({status:'published'},'Marcar como revisadas')" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm">Marcar todas revisadas</button></div>`:''}</div>
+  ${(D.pq||[]).map(q=>{const kk=Array.isArray(q.question_keys)?q.question_keys[0]:q.question_keys,c=kk?kk.correct:-1;return`<div class="border rounded-xl p-4 space-y-2 text-sm ${q.active?'bg-white':'bg-slate-100'}"><div class="flex flex-wrap justify-between gap-2 text-xs text-slate-500"><span>${E(q.ext_id||'ejemplo')} · ${E(q.difficulty||'')}</span>${adm?`<span>${q.active?'👁 Visible':'🚫 Oculta'} · ${q.status==='published'?'✅ Revisada':'📝 Borrador'}</span>`:''}</div>
+  ${vQBody(q,false)}
+  <div class="grid sm:grid-cols-2 gap-2">${q.options.map((o,i)=>`<div class="p-2 rounded-lg border border-slate-200 ${i===c?'bg-emerald-50':''}"><b>${'ABCD'[i]}.</b>${q.image_path?'':' '+E(o)}${i===c?' ✅':''}</div>`).join('')}</div>
+  ${kk&&kk.explanation?`<div class="text-slate-600">💡 ${E(kk.explanation)}</div>`:''}
+  ${adm?`<div class="flex flex-wrap gap-2"><button onclick="setQ('${q.id}',{active:${!q.active}})" class="px-3 py-1.5 rounded-lg ${q.active?'bg-slate-200':'bg-emerald-600 text-white'} text-xs">${q.active?'Ocultar a estudiantes':'Mostrar a estudiantes'}</button><button onclick="setQ('${q.id}',{status:'${q.status==='published'?'draft':'published'}'})" class="px-3 py-1.5 rounded-lg ${q.status==='published'?'bg-slate-200':'bg-indigo-600 text-white'} text-xs">${q.status==='published'?'Volver a borrador':'Marcar como revisada'}</button></div>`:''}</div>`}).join('')||'<div class="bg-white rounded-2xl p-6 shadow text-center text-slate-600">No hay preguntas con ese filtro.</div>'}
+  <div class="flex justify-between items-center"><button ${QF.p?'':'disabled'} onclick="QF.p--;go('preg')" class="px-4 py-2 rounded-lg bg-slate-200 disabled:opacity-40">← Anterior</button><span class="text-sm text-slate-600">Página ${QF.p+1} de ${pages}</span><button ${QF.p+1<pages?'':'disabled'} onclick="QF.p++;go('preg')" class="px-4 py-2 rounded-lg bg-indigo-600 text-white disabled:opacity-40">Siguiente →</button></div></div>`}
+function vVideo(){
+  const c=D.cls||{},prof=M.role==='prof',live=!!(c.is_live&&c.video_url);
+  const badge=live?'<span style="background:#dc2626;color:#fff;padding:1px 10px;border-radius:9999px">● EN VIVO</span>':'<span class="text-slate-500">⚪ Sin clase en vivo</span>';
+  if(prof)return`<div class="flex justify-between text-xs mb-2"><span>${badge}</span></div><div class="space-y-3"><label class="text-sm block">Título de la clase<input id="ct" class="w-full border rounded-lg p-2 mt-1" value="${E(c.title||'')}"></label>
+  <label class="text-sm block">Enlace de la reunión (Meet, Zoom o Jitsi, debe empezar con https://)<input id="cu" class="w-full border rounded-lg p-2 mt-1" placeholder="https://meet.google.com/abc-defg-hij" value="${E(c.video_url||'')}"></label>
+  <label class="text-sm flex items-center gap-2"><input id="cl" type="checkbox" ${c.is_live?'checked':''}> Clase en vivo (los estudiantes verán el botón para unirse)</label>
+  <div class="flex flex-wrap gap-2 items-center"><button onclick="saveClass()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">Guardar</button><a href="https://meet.google.com/new" target="_blank" rel="noopener noreferrer" class="text-sm text-indigo-600 underline">Crear reunión nueva en Google Meet</a>${live?`<a href="${E(c.video_url)}" target="_blank" rel="noopener noreferrer" class="text-sm text-indigo-600 underline">Abrir mi clase</a>`:''}</div></div>`;
+  return`<div class="flex justify-between text-xs mb-2"><span>${badge} · ${E(c.title||'Clase')}</span></div>${live?`<div class="text-center space-y-2 p-4"><div class="text-4xl">🎥</div><p class="text-sm text-slate-600">Tu docente ya inició la clase.</p><a href="${E(c.video_url)}" target="_blank" rel="noopener noreferrer" class="inline-block px-5 py-2 rounded-lg bg-emerald-600 text-white">Unirme a la clase</a></div>`:`<div class="text-center p-4 text-sm text-slate-500"><div class="text-4xl">🕒</div>Tu docente aún no ha iniciado la clase. Esta pantalla se actualiza sola.</div>`}`}
+function paintVideo(){const b=document.getElementById('vbox');if(b)b.innerHTML=vVideo()}
+function vClase(){if(M.role==='prof'&&window.AV&&AV.on())return AV.view();return vClase0()}
+function vClase0(){const prof=M.role==='prof';return`<div class="grid lg:grid-cols-3 gap-4"><div class="lg:col-span-2 space-y-3"><div id="vbox" class="bg-white rounded-2xl p-4 shadow">${vVideo()}</div>
+  <div class="bg-white rounded-2xl p-4 shadow"><h3 class="font-semibold mb-2">Asistencia de hoy</h3>${prof?`<div class="grid sm:grid-cols-2 gap-2">${(D.est||[]).map(u=>`<label class="flex items-center gap-2 p-2 border rounded-lg text-sm"><input type="checkbox" ${D.att[u.id]?'checked':''} onchange="toggleAtt('${u.id}',this.checked)"> ${E(u.full_name)} <span class="text-slate-400">${u.grade??''}°</span></label>`).join('')||'<p class="text-sm text-slate-500">Aún no tienes estudiantes registrados.</p>'}</div>`:`<button onclick="toggleAtt(M.id,${!D.me})" class="px-4 py-2 rounded-lg ${D.me?'bg-emerald-600':'bg-indigo-600'} text-white">${D.me?'✅ Asistencia marcada':'Marcar mi asistencia'}</button>`}</div></div>
+  <div class="bg-white rounded-2xl p-4 shadow flex flex-col h-[28rem]"><h3 class="font-semibold mb-2">💬 Chat</h3><div id="chatbox" class="flex-1 overflow-y-auto space-y-2 text-sm"></div><div class="flex gap-2 mt-2"><input id="msg" onkeydown="if(event.key==='Enter')sendChat()" class="flex-1 border rounded-lg p-2 text-sm" placeholder="Escribe un mensaje…"><button onclick="sendChat()" class="px-3 bg-indigo-600 text-white rounded-lg">➤</button></div></div></div>`}
+function paintChat(){const b=document.getElementById('chatbox');if(!b)return;b.innerHTML=(D.chat||[]).slice(-50).map(c=>`<div class="${c.user_id===M.id?'text-right':''}"><span class="text-[11px] text-slate-500">${E(c.author_name)}</span><div class="block"><span class="inline-block bg-slate-100 rounded-lg px-3 py-1">${E(c.body)}</span></div></div>`).join('');b.scrollTop=b.scrollHeight}
+
+function render(){
+  charts.forEach(c=>c.destroy());charts=[];
+  const root=document.getElementById('app');
+  if(!M){root.innerHTML=authWrap(vAuth());return}
+  if(M.role==='prof'&&M.teacher_status!=='aprobado'){root.innerHTML=vPend();return}
+  if(isDir()&&M.teacher_status!=='aprobado'){root.innerHTML=vPendDir();return}
+  const prof=M.role==='prof';
+  const tabs=isDir()?dirTabs():prof?[['prof','📊 Panel'],...(M.is_admin?[['doc','👩‍🏫 Docentes'+(D.pend?' ('+D.pend+')':'')],['dadm','🏫 Rectores y coordinadores'+(D.pendDir?' ('+D.pendDir+')':'')],['banco','📦 Banco (paquetes)']]:[]),['cur','👥 Cursos y estudiantes'],['simp','🚀 Simulacros y tareas'],['imp','🖨️ Imprimir'],['cal','📷 Calificar'],['preg','📚 Preguntas'],['subirp','📥 Subir preguntas'],['clase','🎥 Clase'],['taller','📝 Talleres'],['aclase','✋ Asistencia a clase'],['asis','🕒 Mi asistencia'],['mhor','🗓 Mi horario']]:[['sim','📝 Mis simulacros y tareas'],...(window.VMODE&&VMODE.on()?[['periodo','🧾 Exámenes virtuales'],['virtual','📎 Trabajos y entregas'],['clase','🎥 Clase virtual']]:[]),['guias','📎 Guías de trabajo'],['est','📊 Mis estadísticas'],['med','🏆 Logros'],['lb','🏅 Ranking']];
+  const body=({sim:vSim,simp:vSimP,cur:vCur,imp:vImp,cal:vCal,doc:vDoc,est:vEst,med:vMed,prof:vProf,perfil:()=>window.AulaDashboard?AulaDashboard.perfil(M,D.email):'',saber:()=>window.SABER?SABER.view():'',periodo:()=>window.PER?PER.view(false):'',saberimp:()=>window.SIMP?SIMP.view():'',asis:()=>window.ASIS?ASIS.view():'',aclase:()=>window.ACL?ACL.view():'',asistencias:()=>window.ACL?ACL.view():'',subirp:()=>window.SUBP?SUBP.view():'',planeador:()=>window.PLN?PLN.view():'',diario:()=>window.PLN?PLN.view():'',taller:()=>window.TAL?TAL.view():'',msgs:()=>window.MSG?MSG.view():'',listas:()=>window.LST?LST.view():'',guias:()=>window.GUI?GUI.view('guias'):'',guiasadm:()=>window.GUI?GUI.view('guiasadm'):'',bancoia:()=>window.BIA?BIA.view():'',claseia:()=>window.CIA?CIA.view():'',talleria:()=>window.TIA?TIA.view():'',reun:()=>window.REU?REU.view():'',permisos:()=>window.PERM?PERM.view():'',diag:()=>window.SIMP?SIMP.view():'',virtual:()=>window.VIRT?VIRT.view():'',plan:()=>window.DOCP?DOCP.view('plan'):'',diario:()=>window.DOCP?DOCP.view('diario'):'',preg:vPreg,clase:vClase,lb:vLb}[tab]||(()=>tab==='banco'?(window.BANCO?BANCO.view():''):['dhor','mhor'].includes(tab)?(window.HZUI?HZUI.view(tab):''):window.DIR?DIR.view(tab):''))();
+  if((prof||isDir())&&window.AulaDashboard){
+    root.innerHTML=AulaDashboard.shell(D,M,tab,body,vLive(),{doc:D.pend,dir:D.pendDir});
+  }else root.innerHTML=`<header class="flex flex-wrap gap-3 justify-between items-center mb-4"><div><h1 class="text-2xl font-extrabold"><img src="aula360-logo-horizontal.png" alt="AULA360" style="height:46px;width:auto;object-fit:contain"></h1><p class="text-xs text-slate-500">${E(M.full_name)} · ${isDir()?(M.role==='rector'?'Rector':'Coordinador'):prof?(M.is_admin?'Administrador':'Docente'+((M.asignaturas||[]).length?' · '+E(M.asignaturas.join(', ')):'')):'Estudiante'+(M.grade?' · '+M.grade+'°':'')}</p></div><div class="flex gap-2"><button onclick="passModal()" class="text-sm px-3 py-1.5 bg-white rounded-lg shadow">🔑 Contraseña</button><button onclick="logout()" class="text-sm px-3 py-1.5 bg-white rounded-lg shadow">Salir</button></div></header>
+  <div id="livebar">${vLive()}</div>
+  <nav class="aic-tabs mb-4">${tabs.map(([k,l])=>`<button onclick="go('${k}')" class="px-4 py-2 rounded-lg text-sm whitespace-nowrap shadow-sm ${tab===k?'on':'bg-white'}">${l}</button>`).join('')}${M.role==='est'?`<button onclick="toggleVirtual()" class="px-4 py-2 rounded-lg text-sm whitespace-nowrap shadow-sm" style="background:${window.VMODE&&VMODE.on()?'#16a34a':'#e2e8f0'};color:${window.VMODE&&VMODE.on()?'#fff':'#334155'};font-weight:800">${window.VMODE&&VMODE.on()?'💻 Modo virtual: ACTIVADO':'🖨️ Modo virtual: apagado'}</button>`:''}</nav>${body}`;
+  if(tab==='prof'&&window.AulaDashboard)AulaDashboard.mount(D,M,charts);
+  if(tab==='clase')paintChat();
+  if(!window.Chart)return;
+  const by=l=>{const m={};l.forEach(a=>(m[a.subject]=m[a.subject]||[]).push(a.score));return Object.entries(m).map(([k,x])=>[k,avg(x)])};
+  if(tab==='est'&&(D.mine||[]).length){const sj=by(D.mine);charts.push(new Chart(document.getElementById('c1'),{type:'bar',data:{labels:sj.map(x=>x[0]),datasets:[{data:sj.map(x=>x[1]),backgroundColor:sj.map(x=>x[1]>=70?'#10b981':x[1]>=50?'#f59e0b':'#ef4444')}]},options:{scales:{y:{min:0,max:100}},plugins:{legend:{display:false}}}}));charts.push(new Chart(document.getElementById('c2'),{type:'line',data:{labels:D.mine.map((a,i)=>'#'+(i+1)),datasets:[{label:'Puntaje',data:D.mine.map(a=>a.score),borderColor:'#4f46e5',tension:.3}]},options:{scales:{y:{min:0,max:100}}}}))}
+}
+boot();
+</script>
+<script src="dashboard.js?v=16"></script>
+<script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
+</body></html>
