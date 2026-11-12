@@ -233,9 +233,9 @@ window.SABER={
     const grouped={};Z.att.filter(a=>a.sim_id===id).forEach(a=>{(grouped[a.user_id]=grouped[a.user_id]||[]).push(a)});
     const courseName=cid=>{const c=(D.courses||[]).find(x=>x.id===cid);return c?c.grade+'° '+c.name:'Curso sin identificar'};
     Object.entries(grouped).forEach(([uid,list])=>{const p=Z.names[uid]||{},cb=combinar(list);rows.push([p.full_name||'Estudiante',courseName(p.course_id),new Set(list.map(x=>x.sesion)).size,list.length,...AREAS.map(a=>cb.areas[a]&&cb.areas[a].t?pct(cb.areas[a].c,cb.areas[a].t):''),cb.global??''])});
-    const csv='\\uFEFF'+rows.map(row=>row.map(v=>'\"'+String(v??'').replace(/\"/g,'\"\"')+'\"').join(';')).join('\\r\\n');
+    const csv='\uFEFF'+rows.map(row=>row.map(v=>'\"'+String(v??'').replace(/\"/g,'\"\"')+'\"').join(';')).join('\r\n');
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-    a.href=url;a.download='AULA360_resultados_'+String(sim.title||'simulacro').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    a.href=url;a.download='AULA360_resultados_'+String(sim.title||'simulacro').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_')+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
   },
   ver(id){Z.ver=id;render()},
   cerrarVer(){Z.ver=null;render()},
