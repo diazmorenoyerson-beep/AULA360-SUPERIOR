@@ -669,3 +669,54 @@ body{background:linear-gradient(180deg,#edf4f7 0,#f5f7fa 340px)!important}
  .aic-section-head{align-items:flex-start!important;gap:8px!important}
 }
 @media(hover:none){.aic-kpi:hover{transform:none!important}}
+
+
+/* AULA360 · lectura y evaluación: tablas, formularios y estados */
+.aic-main{min-width:0}
+.aic-main .aic-card{min-width:0;overflow:hidden}
+.aic-main .aic-card table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+.aic-main .aic-card table thead th{
+  padding:12px 13px!important;text-align:left!important;
+  color:#557287!important;background:linear-gradient(180deg,#f2f7fa,#eaf2f6)!important;
+  border-bottom:1px solid #dce7ed!important;font-size:10px!important;
+  font-weight:850!important;letter-spacing:.075em!important;text-transform:uppercase;
+  white-space:nowrap;
+}
+.aic-main .aic-card table tbody td{
+  padding:12px 13px!important;border-bottom:1px solid #edf2f5!important;
+  color:#36566b!important;vertical-align:middle;
+}
+.aic-main .aic-card table tbody tr:last-child td{border-bottom:0!important}
+.aic-main .aic-card table tbody tr:hover td{background:#f7fafc!important}
+.aic-main .aic-card input:not([type=checkbox]):not([type=radio]),
+.aic-main .aic-card select,.aic-main .aic-card textarea{
+  min-height:42px;padding:10px 12px!important;
+  border:1px solid #cbd9e4!important;border-radius:11px!important;
+  background:linear-gradient(180deg,#fff,#f8fbfd)!important;
+  color:#183b56!important;box-shadow:inset 0 1px 2px rgba(18,54,80,.035)!important;
+}
+.aic-main .aic-card label{color:#49677d!important;font-weight:700!important;font-size:12px!important}
+.aic-main .aic-card :disabled{cursor:not-allowed;opacity:.58}
+.aic-main .aic-card button:active:not(:disabled){
+  transform:translateY(2px)!important;
+  box-shadow:inset 0 2px 4px rgba(10,38,58,.12),0 1px 0 rgba(10,38,58,.08)!important;
+}
+.aic-main .aic-score{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:54px;padding:5px 9px;border-radius:9px;
+  background:#edf4f8;border:1px solid #dbe7ee;color:#315b76;font-weight:850;
+}
+.aic-main .aic-score.score-high{background:#e7f6ef;border-color:#c9ead9;color:#18704e}
+.aic-main .aic-score.score-mid{background:#fff5df;border-color:#f3e2b7;color:#92651c}
+.aic-main .aic-score.score-low{background:#fff0ed;border-color:#f2d8d2;color:#a34c3c}
+.aic-main .aic-empty{padding:28px 18px!important;text-align:center}
+.aic-main .aic-empty>span{display:inline-flex;width:46px;height:46px;align-items:center;justify-content:center;border-radius:14px;background:#e7f0f5;color:#286487;font-size:22px;margin-bottom:10px}
+.aic-main .aic-empty>b{display:block;color:#244a64;font-size:14px}
+.aic-main .aic-empty p{max-width:460px;margin:6px auto 14px;color:#71899a;font-size:12px;line-height:1.6}
+.aic-main :focus-visible{outline:3px solid rgba(37,119,165,.28)!important;outline-offset:2px}
+@media(max-width:760px){
+ .aic-main .aic-card{overflow-x:auto}
+ .aic-main .aic-card table{min-width:590px}
+ .aic-main .aic-card table thead th,.aic-main .aic-card table tbody td{padding:10px!important}
+ .aic-main .aic-card input,.aic-main .aic-card select,.aic-main .aic-card textarea{font-size:16px!important}
+}
