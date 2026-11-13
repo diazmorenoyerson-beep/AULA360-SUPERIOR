@@ -111,4 +111,4 @@ Verificación técnica: la columna existe, las tres RPC tienen permisos autentic
 - `saber_imp_resultados` devuelve el agregado protegido para el docente propietario o rector/coordinador autorizado.
 - `saberimp.js` consolida los datos por estudiante y muestra análisis de prioridad por competencia; el CSV incluye columnas por competencia cuando existen datos clasificados.
 - Si las preguntas no tienen competencia registrada, el módulo lo informa explícitamente y no inventa clasificaciones. En el banco actual hay 0 preguntas, por lo que este desglose permanecerá vacío hasta que se carguen preguntas clasificadas.
-- Migración: `database/2026-11-13_saber_imp_competency_analytics.sql`.
+- Migraciones: `database/2026-11-13_saber_imp_competency_analytics.sql` y `database/2026-11-13_fix_saber_imp_competency_report_auth.sql` (ajuste de autorización del RPC de resultados).
