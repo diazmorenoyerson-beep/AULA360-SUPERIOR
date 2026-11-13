@@ -187,6 +187,7 @@ begin
  select * into p from public.periodo_pruebas where id=p_prueba and estado='publicada';
  if not found then raise exception 'La prueba no está disponible'; end if;
  if not exists(select 1 from public.periodo_targets t where t.prueba_id=p.id and t.course_id=s.course_id) then raise exception 'Esta prueba no está asignada a tu curso'; end if;
+ if exists(select 1 from public.periodo_items i join public.questions q on q.id=i.question_id left join public.question_keys k on k.question_id=q.id where i.prueba_id=p.id and (q.status<>'published' or not q.active or k.question_id is null or k.correct<0 or k.correct>=cardinality(q.options))) then raise exception 'La prueba contiene preguntas sin clave válida; contacta a tu docente'; end if;
  if p.abre is not null and now()<p.abre then raise exception 'La prueba todavía no está abierta'; end if;
  if p.cierra is not null and now()>p.cierra then raise exception 'El plazo de esta prueba terminó'; end if;
  select * into a from public.periodo_intentos where prueba_id=p.id and user_id=u and submitted_at is null for update;
@@ -237,6 +238,7 @@ begin
  lim:=a.started_at+make_interval(mins=>p.minutos);
  if now()>lim then p_answers:=a.answers; end if;
  if exists(select 1 from jsonb_object_keys(p_answers) k where not exists(select 1 from public.periodo_items i where i.prueba_id=p.id and i.question_id::text=k)) then raise exception 'La entrega contiene preguntas que no pertenecen a esta prueba'; end if;
+ if exists(select 1 from public.periodo_items i join public.questions q on q.id=i.question_id left join public.question_keys k on k.question_id=q.id where i.prueba_id=p.id and (k.question_id is null or k.correct<0 or k.correct>=cardinality(q.options))) then raise exception 'No se puede calificar: faltan claves de respuesta válidas'; end if;
  n:=0;c:=0;
  for it in select i.question_id,k.correct,k.explanation,q.options from public.periodo_items i join public.question_keys k on k.question_id=i.question_id join public.questions q on q.id=i.question_id where i.prueba_id=p.id order by i.pos loop
   n:=n+1;
