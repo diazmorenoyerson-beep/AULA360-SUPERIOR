@@ -72,6 +72,19 @@ do $$
 declare d text;
 begin
   select pg_get_functiondef('public.saber_submit(uuid,integer,jsonb,integer,boolean)'::regprocedure) into d;
+  d:=replace(d,
+    $q$ if sim.due_at is not null and sim.due_at<now() then
+   raise exception 'El plazo de este simulacro terminó';
+ end if;
+$q$,'');
+  if position('run.started_at>sim.due_at' in d)=0 then
+    d:=replace(d,
+      $q$ if not found then raise exception 'No hay una sesión activa. Inicia el simulacro nuevamente.'; end if;
+ server_seconds:=$q$,
+      $q$ if not found then raise exception 'No hay una sesión activa. Inicia el simulacro nuevamente.'; end if;
+ if sim.due_at is not null and run.started_at>sim.due_at then raise exception 'La sesión fue iniciada después del cierre del simulacro'; end if;
+ server_seconds:=$q$);
+  end if;
   if position('saber_session_runs' in d)=0 then
     d:=replace(d,
       $q$ prof public.profiles%rowtype;
