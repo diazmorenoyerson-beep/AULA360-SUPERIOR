@@ -3,7 +3,7 @@
 -- del mismo colegio o administrador autorizado.
 create or replace function public.saber_imp_resultados(p_imp uuid)
 returns table(roster_id bigint,name text,document text,course text,por_area jsonb,por_grado jsonb,por_competencia jsonb,cuad smallint,correct_n integer,total_n integer)
-language plpgsql security definer set search_path = public, pg_temp
+language plpgsql security definer set search_path = ''
 as $function$
 begin
  if auth.uid() is null then raise exception 'Debes iniciar sesión'; end if;
