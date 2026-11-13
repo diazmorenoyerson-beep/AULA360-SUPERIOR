@@ -166,7 +166,7 @@ const api={
   async resultados(id){
     if(Z.det&&Z.det.id===id){Z.det=null;return rerender()}
     Z.det={id};rerender();
-    const r=await sb.from('periodo_intentos').select('correct,total,score,created_at,profiles(full_name)').eq('prueba_id',id).order('created_at',{ascending:false});
+    const r=await sb.from('periodo_intentos').select('correct,total,score,created_at,automatic,profiles(full_name)').eq('prueba_id',id).order('created_at',{ascending:false});
     if(r.error){Z.det=null;rerender();return err(r.error)}
     Z.det={id,rows:r.data||[]};rerender();
   },
