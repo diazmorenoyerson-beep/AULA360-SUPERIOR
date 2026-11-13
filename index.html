@@ -339,7 +339,7 @@ function vCal(){
 async function go(t){
   leaveChat();tab=t;
   try{
-    if(t==='saber'){await loadScript('saber.js?v=1');await SABER.load()}
+    if(t==='saber'){await loadScript('saber.js?v=2');await SABER.load()}
     if(t==='institucional'){await loadScript('institucional.js?v=1');await INST.load()}
     if(t==='clase'&&M.role==='prof'){await loadScript('aulavirtual.js?v=2')}
     if(t==='aclase'||t==='asistencias'){await loadScript('claseasis.js?v=7');await ACL.load()}
