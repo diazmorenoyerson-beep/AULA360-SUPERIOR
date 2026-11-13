@@ -1,6 +1,6 @@
 /* AulaICFES — service worker: la app abre rápido y muestra aviso si no hay internet.
    Los datos (Supabase) nunca se guardan aquí; solo los archivos de la propia app. */
-const V='aula360-premium-v25',BASE=['./','index.html','styles.css?v=14','manifest.json','icon-192.png'];
+const V='aula360-premium-v26',BASE=['./','index.html','styles.css?v=14','manifest.json','icon-192.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(BASE)).catch(()=>{}));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{
