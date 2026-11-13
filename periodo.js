@@ -173,17 +173,21 @@ const api={
   async empezar(id){
     const r=await sb.rpc('periodo_preguntas',{p_prueba:id});if(r.error)return err(r.error);
     const p=r.data.prueba,qs=r.data.preguntas;
-    Z.R={p:{id:p.id,titulo:p.titulo},qs,ans:{},i:0,total:p.minutos*60,left:p.minutos*60,sending:false};
+    const left=Math.max(0,Math.ceil((Date.parse(p.expires_at)-Date.now())/1000));
+    Z.saveChain=Promise.resolve();
+    Z.R={p:{id:p.id,titulo:p.titulo},qs,ans:p.answers||{},i:0,total:p.minutos*60,left,sending:false,expiresAt:p.expires_at};
     clearInterval(Z.timer);
-    Z.timer=setInterval(()=>{if(!Z.R)return clearInterval(Z.timer);Z.R.left--;const c=document.getElementById('perclk');if(c){c.textContent=Math.floor(Z.R.left/60)+':'+String(Z.R.left%60).padStart(2,'0')}if(Z.R.left<=0)api.fin(true)},1000);
+    Z.timer=setInterval(()=>{if(!Z.R)return clearInterval(Z.timer);Z.R.left=Math.max(0,Math.ceil((Date.parse(Z.R.expiresAt)-Date.now())/1000));const c=document.getElementById('perclk');if(c){c.textContent=Math.floor(Z.R.left/60)+':'+String(Z.R.left%60).padStart(2,'0')}if(Z.R.left<=0)api.fin(true)},1000);
+    if(left<=0)api.fin(true);
     rerender();
   },
   ir(k){Z.R.i=k;rerender()},
-  resp(id,k){Z.R.ans[id]=k;rerender()},
+  resp(id,k){Z.R.ans[id]=k;const rid=Z.R.p.id,answers={...Z.R.ans};Z.saveChain=(Z.saveChain||Promise.resolve()).then(()=>sb.rpc('periodo_guardar_respuestas',{p_prueba:rid,p_answers:answers})).then(r=>{if(r.error&&Z.R&&Z.R.p.id===rid)err(r.error)});rerender()},
   async fin(auto){
     const R=Z.R;if(!R||R.sending)return;
     if(!auto){const sin=R.qs.filter(q=>R.ans[q.id]==null).length;if(!confirm(sin?`Te faltan ${sin} pregunta(s) sin responder. ¿Entregar de todas formas?`:'¿Entregar el examen?'))return}
     R.sending=true;clearInterval(Z.timer);
+    if(Z.saveChain)await Z.saveChain;
     const a=Object.fromEntries(R.qs.map(q=>[q.id,R.ans[q.id]??null]));
     const r=await sb.rpc('periodo_enviar',{p_prueba:R.p.id,p_answers:a,p_seconds:R.total-Math.max(0,R.left)});
     if(r.error){R.sending=false;return err(r.error)}
