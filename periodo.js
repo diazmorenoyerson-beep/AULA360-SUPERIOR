@@ -187,7 +187,7 @@ const api={
     const d=Z.det;if(!d||d.id!==id||!d.report)return;
     const rows=[['Estudiante','Curso','Grado','Intentos','Mejor nota','Última nota','Última entrega','Tipo de entrega']];
     (d.report.estudiantes||[]).forEach(x=>rows.push([x.nombre,x.curso,x.grado,x.intentos,x.mejor_nota??'',x.ultima_nota??'',x.ultimo_envio??'',x.entrega_automatica?'Automática':x.intentos?'Entregada':'Pendiente']));
-    const csv='\\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\\r\\n');
+    const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download='informe-prueba-periodo-'+id+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
   },
