@@ -37,3 +37,19 @@ Tampoco aparecen funciones RPC cuyo nombre incluya `periodo`. El frontend `perio
 - Confirmada la presencia del informe ampliado y el CSV en `saberimp.js`.
 - La rama sigue separada de `main`; no se fusionó ni desplegó.
 - No se han hecho pruebas completas con estudiantes: el banco de preguntas revisado previamente sigue sin registros publicados válidos.
+
+
+## Seguridad de resultados impresos
+
+- Se revisaron los 36 archivos JavaScript del repositorio: el guardado del módulo impreso pasa por `saber_imp_guardar`; no hay escrituras directas del frontend a `saber_imp_results`.
+- Se reemplazó la política RLS `ALL` por una política SELECT para el docente propietario, rector/coordinador del mismo colegio y administrador.
+- Se revocó acceso de tabla a `anon` y escritura directa a `authenticated`; la escritura oficial continúa por la RPC `saber_imp_guardar`, que calcula con claves del servidor.
+- Verificación SQL posterior: RLS activo; `anon` sin SELECT; `authenticated` con SELECT y sin INSERT/UPDATE/DELETE; RPC de guardado ejecutable por authenticated y no por anon.
+- No se hizo una prueba real autenticada de carga OMR después del cambio. Se mantiene pendiente QA por roles.
+- Detalle: `DOCUMENTACION/SEGURIDAD_RESULTADOS_IMPRESOS_2026-11-13.md`.
+
+## Informe institucional y exportación
+
+- El CSV del informe institucional ahora respeta los filtros activos de fuente, curso y búsqueda, igual que la vista en pantalla.
+- Se corrigió el texto de resumen para indicar cinco fuentes de evaluación.
+- Se incrementó la versión del módulo y la caché PWA para que los cambios se descarguen sin reutilizar scripts/estilos anteriores.
