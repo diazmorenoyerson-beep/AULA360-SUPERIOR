@@ -102,7 +102,7 @@
         rows.push([label,x.title,x.course,x.grade,st.student,st.attempts??st.sheets??'',st.correct??'',st.total??'',st.pct??'',st.best_score??'',st.latest_score??'',st.last_at??st.latest_submitted_at??'']);
       }
     }
-    const csv='\\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\\r\\n');
+    const csv=String.fromCharCode(65279)+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join(String.fromCharCode(13,10));
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='informe_institucional_aula360.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);
   }
 
