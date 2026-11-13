@@ -1044,3 +1044,37 @@ body{
 #app .aic-main .aic-card table tbody td{
   background:rgba(239,247,251,.72)!important;
 }
+
+
+/* AULA360 PREMIUM · coherencia visual global entre todos los módulos */
+#app .aic-main button:not(.ghost):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb):not(.aic-nav):not(.aic-tabs button:not(.on)),
+#app .aic-login-form button,
+#app>.max-w-md button{
+  border-bottom:3px solid rgba(13,43,91,.25)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 3px 0 rgba(13,43,91,.10),0 7px 14px rgba(13,43,91,.10)!important;
+  transition:transform .14s ease,box-shadow .14s ease,filter .14s ease!important;
+}
+#app .aic-main button:not(.ghost):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb):not(.aic-nav):not(.aic-tabs button:not(.on)):hover:not(:disabled),
+#app .aic-login-form button:hover:not(:disabled),
+#app>.max-w-md button:hover:not(:disabled){
+  transform:translateY(-2px);
+  filter:brightness(1.04);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 5px 0 rgba(13,43,91,.12),0 11px 18px rgba(13,43,91,.16)!important;
+}
+#app .aic-main button:not(.ghost):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb):not(.aic-nav):not(.aic-tabs button:not(.on)):active:not(:disabled),
+#app .aic-login-form button:active:not(:disabled),
+#app>.max-w-md button:active:not(:disabled){
+  transform:translateY(2px);
+  border-bottom-width:1px!important;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.16),0 1px 2px rgba(13,43,91,.10)!important;
+}
+#app .aic-main input,#app .aic-main select,#app .aic-main textarea,
+#app .aic-login-form input,#app>.max-w-md input{
+  border-color:rgba(148,174,195,.62)!important;
+  border-radius:11px!important;
+  background:rgba(255,255,255,.92)!important;
+  box-shadow:inset 0 1px 2px rgba(19,48,72,.045)!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #app .aic-main button,#app .aic-login-form button,#app>.max-w-md button{transition:none!important}
+}
