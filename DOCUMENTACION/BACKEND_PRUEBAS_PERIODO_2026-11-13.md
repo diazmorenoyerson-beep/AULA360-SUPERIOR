@@ -102,3 +102,13 @@ Verificación técnica: la columna existe, las tres RPC tienen permisos autentic
 - Se actualizó la referencia del script Saber 11 a `saber.js?v=2` y la caché del service worker a `aula360-premium-v24` para evitar que el navegador siga usando la versión anterior.
 - `saber_session_runs` mantiene RLS activo y no permite SELECT directo a `anon` ni `authenticated`. Las respuestas solo se consultan/actualizan a través de RPC autenticadas.
 - El estado de Vercel revisado sigue apuntando a un commit anterior a estas modificaciones. No se declara desplegada esta versión ni se comparte una URL como si contuviera los cambios.
+
+
+## Analítica por competencia en pruebas impresas y diagnósticos (2026-11-13)
+
+- `saber_imp_results` incorpora `por_competencia` como agregado de aciertos y preguntas por competencia, calculado en PostgreSQL a partir de `questions.competency` y de las claves del servidor.
+- `saber_imp_guardar` calcula el desglose en el mismo proceso transaccional de calificación; no confía en porcentajes enviados por el navegador.
+- `saber_imp_resultados` devuelve el agregado protegido para el docente propietario o rector/coordinador autorizado.
+- `saberimp.js` consolida los datos por estudiante y muestra análisis de prioridad por competencia; el CSV incluye columnas por competencia cuando existen datos clasificados.
+- Si las preguntas no tienen competencia registrada, el módulo lo informa explícitamente y no inventa clasificaciones. En el banco actual hay 0 preguntas, por lo que este desglose permanecerá vacío hasta que se carguen preguntas clasificadas.
+- Migración: `database/2026-11-13_saber_imp_competency_analytics.sql`.
