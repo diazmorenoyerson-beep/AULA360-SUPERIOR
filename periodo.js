@@ -12,7 +12,7 @@ async function load(){
   if(isEst()){
     const r=await sb.from('periodo_pruebas').select('id,titulo,asignatura,periodo,minutos,max_intentos,abre,cierra').eq('estado','publicada').order('created_at',{ascending:false});
     if(r.error)throw r.error;Z.lista=r.data||[];
-    const a=await sb.from('periodo_intentos').select('prueba_id,score,correct,total,created_at').eq('user_id',M.id);
+    const a=await sb.from('periodo_intentos').select('prueba_id,score,correct,total,created_at,automatic').eq('user_id',M.id);
     if(a.error)throw a.error;Z.mios=a.data||[];return;
   }
   const r=await sb.from('periodo_pruebas').select('*,periodo_targets(course_id),periodo_items(count)').order('created_at',{ascending:false});
@@ -125,7 +125,7 @@ function viewDoc(){
 }
 function detHtml(){
   const d=Z.det;if(!d.rows)return'<p style="font-size:13px">Cargando…</p>';
-  return`<div class="aic-table-wrap" style="margin-top:10px"><table><thead><tr><th>ESTUDIANTE</th><th>ACIERTOS</th><th>NOTA /100</th><th>FECHA</th></tr></thead><tbody>${d.rows.map(r=>`<tr><td>${e(r.profiles?.full_name||'')}</td><td>${r.correct}/${r.total}</td><td><b>${r.score}</b></td><td>${fmtF(r.created_at)}</td></tr>`).join('')||'<tr><td colspan="4">Nadie la ha presentado.</td></tr>'}</tbody></table></div>`;
+  return`<div class="aic-table-wrap" style="margin-top:10px"><table><thead><tr><th>ESTUDIANTE</th><th>ACIERTOS</th><th>NOTA /100</th><th>FECHA</th><th>ENTREGA</th></tr></thead><tbody>${d.rows.map(r=>`<tr><td>${e(r.profiles?.full_name||'')}</td><td>${r.correct}/${r.total}</td><td><b>${r.score}</b></td><td>${fmtF(r.created_at)}</td><td>${r.automatic?'Automática':'Entregada'}</td></tr>`).join('')||'<tr><td colspan="5">Nadie la ha presentado.</td></tr>'}</tbody></table></div>`;
 }
 /* ---------- vista estudiante ---------- */
 function viewEst(){
@@ -144,7 +144,7 @@ function viewEst(){
     <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px"><button ${R.i?'':'disabled'} onclick="PER.ir(${R.i-1})" style="padding:8px 14px;border-radius:10px;background:#e2e8f0;border:0">← Anterior</button><button onclick="PER.fin()" style="padding:8px 14px;border-radius:10px;background:#059669;color:#fff;border:0;font-weight:700">Entregar</button><button ${R.i<R.qs.length-1?'':'disabled'} onclick="PER.ir(${R.i+1})" style="padding:8px 14px;border-radius:10px;background:#4f46e5;color:#fff;border:0">Siguiente →</button></div></div>`;
   }
   const rows=Z.lista.map(p=>{const m=(Z.mios||[]).filter(x=>x.prueba_id===p.id),usados=m.length;
-    return`<div class="aic-card" style="padding:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center"><div><b>${e(p.titulo)}</b><div style="font-size:12px;color:#64748b">${e(p.asignatura)} · Periodo ${p.periodo} · ${p.minutos} min · cierra ${fmtF(p.cierra)}${m.length?` · mejor nota ${Math.max(...m.map(x=>+x.score))}`:''}</div></div>
+    return`<div class="aic-card" style="padding:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center"><div><b>${e(p.titulo)}</b><div style="font-size:12px;color:#64748b">${e(p.asignatura)} · Periodo ${p.periodo} · ${p.minutos} min · cierra ${fmtF(p.cierra)}${m.length?` · ${m.length} intento(s) · mejor nota ${Math.max(...m.map(x=>+x.score))}${m.some(x=>x.automatic)?' · incluye entrega automática':''}`:''}</div></div>
     <button ${usados>=p.max_intentos?'disabled':''} onclick="PER.empezar('${p.id}')" style="padding:9px 16px;border-radius:10px;background:#4f46e5;color:#fff;border:0;font-weight:700;opacity:${usados>=p.max_intentos?.4:1}">${usados>=p.max_intentos?'Intentos agotados':'▶ Presentar'}</button></div>`}).join('')||'<p style="color:#64748b">Tu docente aún no ha publicado exámenes.</p>';
   return`<div><h2 style="font-weight:800;font-size:20px;margin-bottom:10px">🧾 Mis exámenes virtuales</h2>${rows}</div>`;
 }
