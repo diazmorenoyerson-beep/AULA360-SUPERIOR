@@ -220,7 +220,7 @@ function csv(){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv;charset=utf-8'}));a.download='resultados_'+(Z.cont.imp.codigo||'')+'.csv';a.click();
 }
 /* ---------- vistas ---------- */
-const B=(c,t)=>`style="padding:9px 14px;border-radius:10px;border:0;font-weight:700;cursor:pointer;background:${c};color:${c==='#e2e8f0'?'#0f172a':'#fff'}">${t}`;
+const B=(c,t)=>`class="aic-btn-3d" style="padding:9px 14px;border-radius:10px;border:0;font-weight:700;cursor:pointer;background:${c};color:${c==='#e2e8f0'?'#0f172a':'#fff'}">${t}`;
 function cursosBox(sel,fn,solo11){
   const cs=Z.cursos.filter(c=>!solo11||true);
   return cs.map(c=>`<label style="display:inline-flex;gap:4px;margin:2px 10px 2px 0;font-size:13px"><input type="checkbox" ${sel.includes(c.id)?'checked':''} onchange="SIMP.${fn}('${c.id}',this.checked)">${c.grade}° ${e(c.name)}</label>`).join('')||'<span style="font-size:13px;color:#64748b">No hay cursos.</span>';
