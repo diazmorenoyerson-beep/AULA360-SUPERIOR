@@ -573,7 +573,7 @@ async function createSim(){
   if(!(SF.a>=1)||SF.a>10)return toast('⚠️','Intentos no válidos','Entre 1 y 10 intentos.');
   if(!SF.cs.length)return toast('⚠️','Elige los cursos','Marca al menos un curso para activarlo.');
   const due=SF.due?new Date(SF.due+'T23:59:00').toISOString():null;
-  const{data,error}=await sb.from('simulacros').insert({teacher_id:M.id,title,kind:SF.k,description:(SF.desc||'').trim()||null,grade:SF.g,subject:SF.s,n_questions:SF.n,minutes_per_question:SF.m,max_attempts:SF.a,due_at:due}).select('id').single();
+  const{data,error}=await sb.from('simulacros').insert({teacher_id:M.id,title,kind:SF.k,description:(SF.desc||'').trim(),active:true,grade:SF.g,subject:SF.s,n_questions:SF.n,minutes_per_question:SF.m,max_attempts:SF.a,due_at:due}).select('id').single();
   if(error)return err(error);
   const t=await sb.from('simulacro_targets').insert(SF.cs.map(c=>({simulacro_id:data.id,course_id:c})));if(t.error)return err(t.error);
   SF.t='';SF.desc='';SF.due='';SF.cs=[];toast('✅','Activado','Ya lo ven los estudiantes de los cursos que marcaste.');go('simp');
@@ -808,7 +808,7 @@ function scheduleGeneralSave(R){
   if(R.saveTimer)clearTimeout(R.saveTimer);
   R.saveTimer=setTimeout(()=>{
     R.saveTimer=null;
-    R.saveChain=R.saveChain.then(async()=>{
+    R.saveChain=R.saveChain.catch(()=>{}).then(async()=>{
       if(Date.now()>=Date.parse(R.expiresAt))return;
       const{error}=await sb.rpc('save_general_sim_answers',{p_run:R.runId,p_answers:R.ans});
       if(error){R.saveError=error;throw error}
