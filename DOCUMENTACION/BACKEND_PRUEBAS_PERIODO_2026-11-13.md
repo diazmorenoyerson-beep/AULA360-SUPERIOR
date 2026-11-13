@@ -66,3 +66,15 @@ El frontend `periodo.js` ahora presenta indicadores, participación por curso, s
 Migración: `database/2026-11-13_periodo_academic_report.sql`.
 
 No se presentan bandas de riesgo ni niveles de desempeño inventados; esos criterios deben definirse institucionalmente antes de incorporarlos.
+
+
+## Ajustes adicionales de integridad y seguridad
+
+- Los intentos sin entregar ya no consumen el contador de intentos del estudiante; se puede reanudar la sesión activa.
+- Una prueba publicada no puede volver a borrador y una prueba cerrada no puede reabrirse.
+- Las funciones de trigger `periodo_guard_publish` y `periodo_set_owner` no se pueden invocar directamente como RPC.
+- Se separaron las políticas de escritura de items/destinatarios para evitar políticas SELECT permisivas duplicadas.
+- Se indexó la FK `periodo_items.question_id`.
+- Se revocó la ejecución anónima de `saber_begin_session`; conserva ejecución para usuarios autenticados.
+
+La revisión de seguridad general sigue mostrando advertencias preexistentes de otras funciones `SECURITY DEFINER` del proyecto. No se revocaron masivamente porque varias son flujos activos de la plataforma y requieren auditoría individual. La tabla `saber_session_runs` mantiene RLS sin políticas directas deliberadamente: se accede mediante RPCs autorizadas.
