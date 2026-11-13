@@ -205,15 +205,17 @@ async function resultados(forzar){
 }
 function agrupar(){
   const por={};
-  (Z.res||[]).forEach(r=>{const o=por[r.roster_id]=por[r.roster_id]||{name:r.name,doc:r.document,course:r.course,areas:{},grados:{},k:0};o.k++;
+  (Z.res||[]).forEach(r=>{const o=por[r.roster_id]=por[r.roster_id]||{name:r.name,doc:r.document,course:r.course,areas:{},grados:{},competencias:{},k:0};o.k++;
     Object.entries(r.por_area||{}).forEach(([a,v])=>{const x=o.areas[a]=o.areas[a]||{c:0,t:0};x.c+=v.c;x.t+=v.t});
-    Object.entries(r.por_grado||{}).forEach(([g,v])=>{const x=o.grados[g]=o.grados[g]||{c:0,t:0};x.c+=v.c;x.t+=v.t})});
+    Object.entries(r.por_grado||{}).forEach(([g,v])=>{const x=o.grados[g]=o.grados[g]||{c:0,t:0};x.c+=v.c;x.t+=v.t});
+    Object.entries(r.por_competencia||{}).forEach(([k,v])=>{const x=o.competencias[k]=o.competencias[k]||{c:0,t:0};x.c+=v.c;x.t+=v.t})});
   return Object.values(por).sort((a,b)=>String(a.course).localeCompare(b.course)||String(a.name).localeCompare(b.name,'es'));
 }
 function csv(){
   const dg=Z.cont.imp.kind==='diagnostico',f=agrupar();
-  const head=['Estudiante','Documento','Curso',...colsDe(f).map(a=>a+' %'),dg?'Total %':'Global estimado (0-500)'];
-  const rows=[head].concat(f.map(x=>{const tot=Object.values(x.areas).reduce((s,v)=>({c:s.c+v.c,t:s.t+v.t}),{c:0,t:0});return[x.name,x.doc||'',x.course,...colsDe(f).map(a=>x.areas[a]?pc(x.areas[a].c,x.areas[a].t):''),dg?pc(tot.c,tot.t):global(x.areas)??'']}));
+  const comps=[...new Set(f.flatMap(x=>Object.keys(x.competencias||{})))].sort((a,b)=>a.localeCompare(b,'es'));
+  const head=['Estudiante','Documento','Curso',...colsDe(f).map(a=>a+' %'),...comps.map(c=>'Competencia: '+c+' %'),dg?'Total %':'Global estimado (0-500)'];
+  const rows=[head].concat(f.map(x=>{const tot=Object.values(x.areas).reduce((s,v)=>({c:s.c+v.c,t:s.t+v.t}),{c:0,t:0});return[x.name,x.doc||'',x.course,...colsDe(f).map(a=>x.areas[a]?pc(x.areas[a].c,x.areas[a].t):''),...comps.map(c=>x.competencias[c]?.t?pc(x.competencias[c].c,x.competencias[c].t):''),dg?pc(tot.c,tot.t):global(x.areas)??'']}));
   const t='﻿'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv;charset=utf-8'}));a.download='resultados_'+(Z.cont.imp.codigo||'')+'.csv';a.click();
 }
@@ -306,10 +308,14 @@ function resHtml(){
     '<b style="font-size:12px">Prioridad por área</b><div class="aic-table-wrap"><table><thead><tr><th>Área</th><th>Dominio ponderado</th><th>Orientación</th></tr></thead><tbody>'+areasPrioridad.map(([a,v])=>{const n=nivel(v.p);return'<tr><td>'+e(a)+'</td><td><b>'+v.p+'%</b></td><td><span style="background:'+n[1]+';color:'+n[2]+';padding:3px 7px;border-radius:99px;font-size:11px;font-weight:700">'+n[0]+'</span></td></tr>'}).join('')+'</tbody></table></div>'+
     (dg?'<div style="margin-top:9px"><b style="font-size:12px">Estudiantes que requieren acompañamiento prioritario</b>'+(riesgos.length?'<div class="aic-table-wrap"><table><thead><tr><th>Estudiante</th><th>Curso</th><th>Dominio</th></tr></thead><tbody>'+riesgos.slice(0,12).map(x=>'<tr><td>'+e(x.name)+'</td><td>'+e(x.course)+'</td><td><b>'+pc(x.total.c,x.total.t)+'%</b></td></tr>').join('')+'</tbody></table></div>'+(riesgos.length>12?'<p style="font-size:11px;color:#64748b">Se muestran los primeros 12; el CSV contiene el listado completo.</p>':''):'<p style="font-size:12px;color:#166534">No se identifican estudiantes por debajo del umbral orientativo del 50%.</p>')+'</div>':'')+
     '</div>';
+  const competenciaTotales={};f.forEach(x=>Object.entries(x.competencias||{}).forEach(([k,v])=>{const o=competenciaTotales[k]=competenciaTotales[k]||{c:0,t:0};o.c+=v.c;o.t+=v.t}));
+  const competenciaHtml=Object.keys(competenciaTotales).length
+    ? '<div style="margin-top:12px"><b style="font-size:13px">Análisis por competencia</b><p style="font-size:12px;color:#64748b;margin:3px 0 7px">Solo incluye preguntas que tienen competencia registrada en el banco.</p><div class="aic-table-wrap"><table><thead><tr><th>COMPETENCIA</th><th>ACIERTOS</th><th>PREGUNTAS</th><th>DOMINIO</th><th>ORIENTACIÓN</th></tr></thead><tbody>'+Object.entries(competenciaTotales).sort((a,b)=>pc(a[1].c,a[1].t)-pc(b[1].c,b[1].t)).map(([k,v])=>{const p=pc(v.c,v.t),n=nivel(p);return '<tr><td><b>'+e(k)+'</b></td><td>'+v.c+'</td><td>'+v.t+'</td><td><b>'+p+'%</b></td><td><span style="background:'+n[1]+';color:'+n[2]+';padding:3px 7px;border-radius:99px;font-size:11px;font-weight:700">'+n[0]+'</span></td></tr>'}).join('')+'</tbody></table></div></div>'
+    : '<div style="margin-top:12px;padding:10px;border:1px dashed #cbd5e1;border-radius:10px;font-size:12px;color:#64748b"><b>Análisis por competencia pendiente de clasificación.</b> El banco todavía no tiene preguntas con competencia registrada; al clasificar preguntas, el informe mostrará este desglose automáticamente.</div>';
   let gr='';
   if(dg){const g={};f.forEach(x=>Object.entries(x.grados).forEach(([k,v])=>{const o=g[k]=g[k]||{c:0,t:0};o.c+=v.c;o.t+=v.t}));
     gr='<div style="margin-top:10px"><b style="font-size:13px">Dominio por grado anterior (grupo completo)</b><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">'+Object.keys(g).sort((a,b)=>a-b).map(k=>{const p=pc(g[k].c,g[k].t);return'<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 10px;font-size:13px;background:'+(p<50?'#fff1f2':p<70?'#fffbeb':'#ecfdf5')+'">Grado '+k+'.°<br><b>'+p+'%</b></div>'}).join('')+'</div><p style="font-size:12px;color:#64748b">Los grados en rojo son los temas que el grupo debe reforzar.</p></div>'}
-  return'<div style="margin-top:10px"><b style="font-size:13px">Comparativo por curso</b><div class="aic-table-wrap"><table><thead><tr><th>CURSO</th><th>EST.</th>'+areas.map(a=>'<th>'+e(CORTA[a]||a)+'</th>').join('')+'<th>'+(dg?'TOTAL':'GLOBAL EST.')+'</th></tr></thead><tbody>'+cursoRows+'</tbody></table></div></div>'+analisis+
+  return'<div style="margin-top:10px"><b style="font-size:13px">Comparativo por curso</b><div class="aic-table-wrap"><table><thead><tr><th>CURSO</th><th>EST.</th>'+areas.map(a=>'<th>'+e(CORTA[a]||a)+'</th>').join('')+'<th>'+(dg?'TOTAL':'GLOBAL EST.')+'</th></tr></thead><tbody>'+cursoRows+'</tbody></table></div></div>'+analisis+competenciaHtml+
   '<div class="aic-table-wrap" style="margin-top:10px"><b style="font-size:13px">Resultados por estudiante</b><table><thead><tr><th>ESTUDIANTE</th><th>CURSO</th>'+areas.map(a=>'<th>'+e(CORTA[a]||a)+'</th>').join('')+'<th>'+(dg?'TOTAL':'GLOBAL EST.')+'</th></tr></thead><tbody>'+
    f.map(x=>{const tot=Object.values(x.areas).reduce((s,v)=>({c:s.c+v.c,t:s.t+v.t}),{c:0,t:0});return'<tr><td><b>'+e(x.name)+'</b></td><td>'+e(x.course)+'</td>'+areas.map(a=>'<td>'+(x.areas[a]&&x.areas[a].t?pc(x.areas[a].c,x.areas[a].t)+'%':'—')+'</td>').join('')+'<td><b>'+(dg?(tot.t?pc(tot.c,tot.t)+'%':'—'):(global(x.areas)??'—'))+'</b></td></tr>'}).join('')+
    '<tr style="background:#f1f5fb"><td colspan="2"><b>Promedio ponderado</b></td>'+areas.map(a=>'<td><b>'+prom(a)+(prom(a)==='—'?'':'%')+'</b></td>').join('')+'<td></td></tr></tbody></table></div>'+
