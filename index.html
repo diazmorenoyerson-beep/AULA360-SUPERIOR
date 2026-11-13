@@ -103,7 +103,17 @@ async function onDep(id){
 }
 async function onMun(id){
   RG.mun=id;RG.col='';RG.sede='';RG.q='';D.cols=[];D.sedes=[];
-  if(id){const r=await sb.from('colegios').select('id,nombre').eq('municipio_id',+id).order('nombre').limit(1000);D.cols=r.data||[]}
+  if(id){
+    let offset=0;
+    while(true){
+      const r=await sb.from('colegios').select('id,nombre').eq('municipio_id',+id).order('nombre').order('id').range(offset,offset+999);
+      if(r.error){err(r.error);break}
+      const page=r.data||[];
+      D.cols.push(...page);
+      if(page.length<1000)break;
+      offset+=1000;
+    }
+  }
   render();
 }
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
