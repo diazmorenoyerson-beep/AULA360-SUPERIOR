@@ -143,11 +143,14 @@ async function doDocente(){
   for(const g of RG.gs){const l=parseCursos(RG.cur[g]);if(!l.length)return toast('⚠️','Faltan los cursos','Escribe los cursos de '+g+'°, por ejemplo: A, B, C.');cursos[g]=l}
   if(!RG.area)return toast('⚠️','Falta el área','Elige tu área.');
   if(!RG.sinAsig&&!RG.asg.length)return toast('⚠️','Falta la asignatura','Elige una asignatura o marca «Sin asignatura».');
-  const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{emailRedirectTo:window.location.origin+'/',data:{account:'docente',full_name:nm,phone:tel,colegio_id:RG.otro?'':String(RG.col),sede_id:RG.otro?'':String(RG.sede||''),school_other:RG.otro?otroTxt:'',cursos,area:RG.area,asignaturas:RG.sinAsig?[]:RG.asg,sin_asignatura:!!RG.sinAsig}}});
-  if(error)return err(error);
-  RG=RG0();D.muns=[];D.cols=[];
-  if(!data.session){authMode='login';render();return toast('📧','Revisa tu correo','Confirma tu cuenta y luego inicia sesión.')}
-  boot();
+  try{
+    const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{emailRedirectTo:window.location.origin+'/',data:{account:'docente',full_name:nm,phone:tel,colegio_id:RG.otro?'':String(RG.col),sede_id:RG.otro?'':String(RG.sede||''),school_other:RG.otro?otroTxt:'',cursos,area:RG.area,asignaturas:RG.sinAsig?[]:RG.asg,sin_asignatura:!!RG.sinAsig}}});
+    if(error)return err(error);
+    RG=RG0();D.muns=[];D.cols=[];
+    if(!data.session){authMode='login';render();return toast('📧','Revisa tu correo','Confirma tu cuenta y luego inicia sesión.')}
+    await boot();
+  }catch(e){toast('⚠️','No se pudo completar el registro',e?.message||'Error de conexión con el servidor. Inténtalo de nuevo.')}
+
 }
 async function doAuth(){
   if(!sb)return toast('⚠️','Servicio de acceso no disponible','No se pudo cargar la conexión con Supabase. Recarga la página o revisa tu conexión y el bloqueo de CDN.');
@@ -173,16 +176,20 @@ async function doAuth(){
   }
   const full_name=v('nm'),grade=v('gr');
   if(!full_name)return toast('⚠️','Falta tu nombre','Escribe tu nombre completo.');
-  const{data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin+'/',data:{full_name,grade,document:dc,pw_initial:true}}});
-  if(error){if((error.message||'').toLowerCase().includes('database error'))return toast('⚠️','No se pudo crear la cuenta','Ese documento o ese correo ya tienen una cuenta. Si ya te registraste, pulsa «Entrar»: tu contraseña es tu número de documento.');return err(error)}
-  if(!data.session){authMode='login';render();return toast('📧','Revisa tu correo','Abre el enlace más reciente y luego inicia sesión.')}
-  boot();
+  try{
+    const{data,error}=await sb.auth.signUp({email:email.trim(),password,options:{emailRedirectTo:window.location.origin+'/',data:{full_name,grade,document:dc,pw_initial:true}}});
+    if(error){if((error.message||'').toLowerCase().includes('database error'))return toast('⚠️','No se pudo crear la cuenta','Ese documento o ese correo ya tienen una cuenta. Si ya te registraste, pulsa «Entrar»: tu contraseña es tu número de documento.');return err(error)}
+    if(!data.session){authMode='login';render();return toast('📧','Revisa tu correo','Abre el enlace más reciente y luego inicia sesión.')}
+    await boot();
+  }catch(e){toast('⚠️','No se pudo crear la cuenta',e?.message||'Error de conexión con el servidor. Inténtalo de nuevo.')}
 }
 async function resend(){
   const email=v('em');if(!email)return toast('⚠️','Falta el correo','Escribe tu correo arriba y vuelve a pulsar.');
-  const{error}=await sb.auth.resend({type:'signup',email});
-  if(error)return err(error);
-  toast('📧','Correo enviado','Usa solo el enlace más reciente, en el mismo navegador.');
+  try{
+    const{error}=await sb.auth.resend({type:'signup',email:email.trim()});
+    if(error)return err(error);
+    toast('📧','Correo enviado','Usa solo el enlace más reciente, en el mismo navegador.');
+  }catch(e){toast('⚠️','No se pudo reenviar',e?.message||'Revisa tu conexión e inténtalo de nuevo.')}
 }
 function passModal(){
   closePass();
