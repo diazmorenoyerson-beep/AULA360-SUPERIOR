@@ -91,17 +91,21 @@
   }
   function exportCsv(){
     const rows=[['fuente','evaluacion','curso','grado','estudiante','intentos_hojas','correctas','preguntas','porcentaje_aciertos','mejor_nota_100','ultima_nota_100','fecha']];
-    for(const x of (data?.competencies||[])){rows.push(['Análisis por competencia',x.title,x.course,x.grade,x.competency,'',x.correct,x.total,x.pct??'', '', '',x.exam_date??''])}
-    for(const x of rowsFor('simulacros_generales'))for(const st of (x.students||[]))rows.push(['Simulacro general',x.title,x.course,x.grade,st.student,st.attempts,st.correct,st.total,st.pct,st.best_score,st.latest_score,st.last_at]);
-    for(const key of ['periodo','saber_online','impresos','diagnosticos']){
-      const label={periodo:'Prueba de periodo',saber_online:'Saber 11 en línea',impresos:'Simulacro impreso',diagnosticos:'Diagnóstico'}[key];
-      for(const x of rowsFor(key))for(const s of (x.students||[])){
-        rows.push([label,x.title,x.course,x.grade,s.student,s.attempts??s.sheets??'',s.correct??'',s.total??'',s.pct??'',s.best_score??'',s.latest_score??'',s.last_at??s.latest_submitted_at??'']);
+    if(filters.source==='all'||filters.source==='competencies'){
+      const competencies=(Array.isArray(data?.competencies)?data.competencies:[]).filter(matches);
+      for(const x of competencies)rows.push(['Análisis por competencia',x.title,x.course,x.grade,x.competency,'',x.correct,x.total,x.pct??'','','',x.exam_date??'']);
+    }
+    for(const key of ['periodo','saber_online','simulacros_generales','impresos','diagnosticos']){
+      if(filters.source!=='all'&&filters.source!==key)continue;
+      const label={periodo:'Prueba de periodo',saber_online:'Saber 11 en línea',simulacros_generales:'Simulacro general',impresos:'Simulacro impreso',diagnosticos:'Diagnóstico'}[key];
+      for(const x of filteredRows(key))for(const st of (x.students||[])){
+        rows.push([label,x.title,x.course,x.grade,st.student,st.attempts??st.sheets??'',st.correct??'',st.total??'',st.pct??'',st.best_score??'',st.latest_score??'',st.last_at??st.latest_submitted_at??'']);
       }
     }
-    const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='informe_institucional_aula360.csv';a.click();URL.revokeObjectURL(a.href);
+    const csv='\\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\\r\\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='informe_institucional_aula360.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);
   }
+
   function view(){
     if(loading)return '<div class="aic-card" style="padding:24px">⏳ Consultando los resultados institucionales…</div>';
     if(error)return '<div class="aic-card" style="padding:20px"><b>No se pudo cargar el informe</b><p style="color:#b91c1c;font-size:13px;margin:6px 0">'+esc(error)+'</p><button class="aic-link" onclick="INST.load()">Reintentar</button></div>';
@@ -109,7 +113,7 @@
     const countRows=[['periodo','Pruebas de periodo','🧪'],['saber_online','Saber 11 en línea','💻'],['simulacros_generales','Simulacros generales','📝'],['impresos','Simulacros impresos','🖨️'],['diagnosticos','Diagnósticos','🩺']];
     const counts=countRows.filter(c=>filters.source==='all'||filters.source===c[0]).map(c=>[c[1],filteredRows(c[0]).length,c[2]]);
     const scope=data.scope?.role==='rector'?'Vista institucional · Rector':data.scope?.role==='coordinador'?'Vista institucional · Coordinador':'Vista de tus cursos · Docente';
-    return '<div><section class="aic-hero"><div class="aic-hero-copy"><span class="aic-kicker">CENTRO DE EVALUACIÓN</span><h2>Informe institucional unificado</h2><p>Participación y resultados de las cuatro fuentes de evaluación, sin mezclar sus escalas.</p><div class="aic-hero-actions"><button onclick="INST.load()">↻ Actualizar informe</button><button class="ghost" onclick="INST.csv()">↓ Exportar CSV</button></div></div><div class="aic-hero-art"><div class="aic-orbit orbit1"></div><div class="aic-orbit orbit2"></div><div class="aic-book">📊</div><div class="aic-cap">🎓</div></div></section>'+
+    return '<div><section class="aic-hero"><div class="aic-hero-copy"><span class="aic-kicker">CENTRO DE EVALUACIÓN</span><h2>Informe institucional unificado</h2><p>Participación y resultados de las cinco fuentes de evaluación, sin mezclar sus escalas.</p><div class="aic-hero-actions"><button onclick="INST.load()">↻ Actualizar informe</button><button class="ghost" onclick="INST.csv()">↓ Exportar CSV</button></div></div><div class="aic-hero-art"><div class="aic-orbit orbit1"></div><div class="aic-orbit orbit2"></div><div class="aic-book">📊</div><div class="aic-cap">🎓</div></div></section>'+
       '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:12px 0"><span class="aic-chip">'+scope+'</span><span style="font-size:12px;color:#64748b">Actualizado: '+date(data.generated_at)+'</span></div>'+
       '<section class="aic-kpis">'+counts.map(c=>'<article class="aic-kpi"><div class="aic-kpi-icon blue">'+c[2]+'</div><div><small>'+c[0]+'</small><strong>'+num(c[1])+'</strong><span>Registros curso-evaluación</span></div></article>').join('')+'</section>'+filterBar()+
       '<div class="aic-card" style="padding:14px;margin-top:12px;font-size:12px;color:#64748b">Las pruebas de periodo conservan su nota de 0 a 100. Saber 11 en línea, impresos y diagnósticos muestran porcentaje de respuestas correctas. Los porcentajes no se convierten en puntajes oficiales ICFES. Los cursos sin estudiantes o sin entregas no generan resultados ficticios.</div>'+
