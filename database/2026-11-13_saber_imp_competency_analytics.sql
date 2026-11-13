@@ -17,7 +17,7 @@ begin
  if u is null then raise exception 'Debes iniciar sesión'; end if;
  if not exists(select 1 from public.saber_imp i where i.id=p_imp and (
    (i.colegio_id=public.aula360_my_school() and public.aula360_my_role() in ('rector','coordinador'))
-   or i.teacher_id=u or public.aula360_is_admin()
+   or i.teacher_id=auth.uid() or public.aula360_is_admin()
  )) then raise exception 'No autorizado'; end if;
  if jsonb_typeof(p_rows)<>'array' or jsonb_array_length(p_rows)>500 then raise exception 'Lote inválido'; end if;
  if exists(select 1 from jsonb_array_elements(p_rows) x group by (x->>'roster_id'),(x->>'cuad') having count(*)>1) then
