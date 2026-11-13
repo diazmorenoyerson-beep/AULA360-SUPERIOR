@@ -78,3 +78,19 @@ No se presentan bandas de riesgo ni niveles de desempeño inventados; esos crite
 - Se revocó la ejecución anónima de `saber_begin_session`; conserva ejecución para usuarios autenticados.
 
 La revisión de seguridad general sigue mostrando advertencias preexistentes de otras funciones `SECURITY DEFINER` del proyecto. No se revocaron masivamente porque varias son flujos activos de la plataforma y requieren auditoría individual. La tabla `saber_session_runs` mantiene RLS sin políticas directas deliberadamente: se accede mediante RPCs autorizadas.
+
+
+## Sesiones Saber 11: respuestas guardadas en servidor (2026-11-13)
+
+Se reforzó el flujo de simulacros cronometrados:
+
+- `saber_session_runs.answers` guarda el snapshot de respuestas en PostgreSQL.
+- `saber_save_answers(p_run,p_answers)` valida que el intento pertenezca al estudiante autenticado, que siga abierto, que no haya vencido y que cada pregunta/opción corresponda al simulacro.
+- `saber_begin_session` devuelve las respuestas del servidor al reanudar; el reloj sigue ligado a `expires_at`.
+- `saber_submit` ya no califica el JSON enviado por el navegador: califica exclusivamente el último snapshot guardado en el servidor. Si el tiempo terminó, registra la entrega como automática.
+- El cliente guarda respuestas en segundo plano, espera la última escritura antes de una entrega manual y usa el snapshot del servidor cuando se reanuda.
+- Se fijó `search_path` vacío en las funciones privilegiadas del flujo y se revocó EXECUTE a `public` y `anon`; `authenticated` conserva el permiso.
+
+Migración: `database/2026-11-13_saber_server_answer_persistence.sql`.
+
+Verificación técnica: la columna existe, las tres RPC tienen permisos autenticados y no permiten ejecución anónima; `saber_submit` usa `run.answers` y no lee las respuestas del payload. La prueba completa con una sesión real de estudiante sigue pendiente porque el banco tiene cero preguntas publicadas y válidas. La persistencia en servidor mejora integridad y recuperación, pero no equivale a una certificación anti-trampas ni sustituye el QA autenticado.
