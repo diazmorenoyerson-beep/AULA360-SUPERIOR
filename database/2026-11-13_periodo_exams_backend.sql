@@ -162,6 +162,8 @@ create or replace function public.periodo_guard_publish()
 returns trigger language plpgsql security definer set search_path=public,pg_temp
 as $$
 begin
+ if old.estado='publicada' and new.estado not in ('publicada','cerrada') then raise exception 'Una prueba publicada no puede volver a borrador'; end if;
+ if old.estado='cerrada' and new.estado<>'cerrada' then raise exception 'Una prueba cerrada no puede reabrirse'; end if;
  if old.estado<>'borrador' and (
   new.titulo is distinct from old.titulo or new.asignatura is distinct from old.asignatura or
   new.grado is distinct from old.grado or new.periodo is distinct from old.periodo or
