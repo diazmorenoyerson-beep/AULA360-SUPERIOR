@@ -573,7 +573,7 @@ async function createSim(){
   if(!(SF.a>=1)||SF.a>10)return toast('⚠️','Intentos no válidos','Entre 1 y 10 intentos.');
   if(!SF.cs.length)return toast('⚠️','Elige los cursos','Marca al menos un curso para activarlo.');
   const due=SF.due?new Date(SF.due+'T23:59:00').toISOString():null;
-  const{data,error}=await sb.from('simulacros').insert({title,kind:SF.k,description:(SF.desc||'').trim()||null,grade:SF.g,subject:SF.s,n_questions:SF.n,minutes_per_question:SF.m,max_attempts:SF.a,due_at:due}).select('id').single();
+  const{data,error}=await sb.from('simulacros').insert({teacher_id:M.id,title,kind:SF.k,description:(SF.desc||'').trim()||null,grade:SF.g,subject:SF.s,n_questions:SF.n,minutes_per_question:SF.m,max_attempts:SF.a,due_at:due}).select('id').single();
   if(error)return err(error);
   const t=await sb.from('simulacro_targets').insert(SF.cs.map(c=>({simulacro_id:data.id,course_id:c})));if(t.error)return err(t.error);
   SF.t='';SF.desc='';SF.due='';SF.cs=[];toast('✅','Activado','Ya lo ven los estudiantes de los cursos que marcaste.');go('simp');
@@ -785,25 +785,66 @@ async function bulk(patch,txt){
 /* ---------- Simulacro (estudiante) ---------- */
 async function startSim(simId){
   const sim=(D.sims||[]).find(x=>x.id===simId);if(!sim)return;
-  const secs=sim.minutes_per_question*60,n=sim.n_questions;
-  const{data,error}=await sb.from('questions').select('id,part,body,options,image_path,stimulus_title,stimulus_content').eq('grade',sim.grade).eq('subject',sim.subject).eq('active',true);
+  const{data,error}=await sb.rpc('start_general_sim',{p_sim:simId});
   if(error)return err(error);
-  if(data.length<n)return toast('⚠️','No disponible','Hay '+data.length+' preguntas visibles y se piden '+n+'. Avisa a tu docente.');
-  const qs=data.sort(()=>Math.random()-.5).slice(0,n);
-  const total=qs.length*secs;
-  S={grade:sim.grade,subject:sim.subject,qs,ans:{},total,left:total,i:0,sending:false,simId:sim.id,title:sim.title};
+  const qs=data.questions||[];
+  if(!qs.length)return toast('⚠️','Simulacro no disponible','El servidor no entregó preguntas para esta sesión.');
+  S={grade:sim.grade,subject:sim.subject,qs,ans:data.answers||{},total:data.duration_seconds,left:data.seconds_left,
+    i:0,sending:false,simId:sim.id,title:sim.title,runId:data.run_id,expiresAt:data.expires_at,
+    saveChain:Promise.resolve(),saveTimer:null,saveError:null};
   clearInterval(timer);
-  timer=setInterval(()=>{if(!S)return;S.left--;const e=document.getElementById('clk');if(e){e.textContent=fmt(S.left);e.className='font-mono text-2xl font-bold '+(S.left<30?'text-red-600':'text-indigo-700')}if(S.left<=0)finish(true)},1000);
+  timer=setInterval(()=>{
+    if(!S)return;
+    S.left=Math.max(0,Math.ceil((Date.parse(S.expiresAt)-Date.now())/1000));
+    const e=document.getElementById('clk');
+    if(e){e.textContent=fmt(S.left);e.className='font-mono text-2xl font-bold '+(S.left<30?'text-red-600':'text-indigo-700')}
+    if(S.left<=0)finish(true);
+  },500);
+  if(data.resumed)toast('↩️','Sesión recuperada','Continuaste donde quedaste; el reloj siguió corriendo.');
   render();
 }
+function scheduleGeneralSave(R){
+  if(!R||R.sending)return;
+  if(R.saveTimer)clearTimeout(R.saveTimer);
+  R.saveTimer=setTimeout(()=>{
+    R.saveTimer=null;
+    R.saveChain=R.saveChain.then(async()=>{
+      if(Date.now()>=Date.parse(R.expiresAt))return;
+      const{error}=await sb.rpc('save_general_sim_answers',{p_run:R.runId,p_answers:R.ans});
+      if(error){R.saveError=error;throw error}
+      R.saveError=null;
+    });
+    R.saveChain.catch(e=>{if(S===R)toast('⚠️','No se sincronizó una respuesta','Comprueba tu conexión. No cierres el simulacro; volveremos a intentar al guardar.')});
+  },450);
+}
+async function flushGeneralSave(R){
+  if(R.saveTimer){clearTimeout(R.saveTimer);R.saveTimer=null}
+  await R.saveChain;
+  if(Date.now()>=Date.parse(R.expiresAt))return;
+  const{error}=await sb.rpc('save_general_sim_answers',{p_run:R.runId,p_answers:R.ans});
+  if(error)throw error;
+}
 async function finish(auto){
-  if(!S||S.sending)return;S.sending=true;clearInterval(timer);
-  const answers=Object.fromEntries(S.qs.map(q=>[q.id,S.ans[q.id]??null]));
-  const{data,error}=await sb.rpc('submit_attempt',{p_grade:S.grade,p_subject:S.subject,p_answers:answers,p_seconds_left:Math.max(0,S.left),p_auto:!!auto,p_simulacro_id:S.simId});
-  if(error){S.sending=false;return err(error)}
-  RES={...data,auto,qs:S.qs,ans:S.ans};S=null;
-  (data.new_medals||[]).forEach(k=>{const m=MEDALS[k];if(m)toast(m[0],'¡Medalla desbloqueada: '+m[1]+'!',m[2])});
-  render();
+  const R=S;if(!R||R.sending)return;
+  R.sending=true;clearInterval(timer);
+  try{
+    await flushGeneralSave(R);
+    const{data,error}=await sb.rpc('submit_general_sim',{p_run:R.runId,p_auto:!!auto});
+    if(error)throw error;
+    RES={...data,auto:!!data.auto,qs:R.qs,ans:data.ans||{}};
+    S=null;
+    render();
+  }catch(e){
+    R.sending=false;
+    if(Date.now()<Date.parse(R.expiresAt)){
+      timer=setInterval(()=>{if(!S)return;S.left=Math.max(0,Math.ceil((Date.parse(S.expiresAt)-Date.now())/1000));const el=document.getElementById('clk');if(el)el.textContent=fmt(S.left);if(S.left<=0)finish(true)},500);
+      err(e);
+    }else{
+      const{data,error}=await sb.rpc('submit_general_sim',{p_run:R.runId,p_auto:true});
+      if(error){R.sending=false;return err(error)}
+      RES={...data,auto:true,qs:R.qs,ans:data.ans||{}};S=null;render();
+    }
+  }
 }
 
 /* ---------- CSV ---------- */
@@ -891,7 +932,7 @@ function vSim(){
   <button onclick="RES=null;go('sim')" class="px-5 py-2 bg-indigo-600 text-white rounded-lg">Volver a mis simulacros</button></div>`}
   if(S){const q=S.qs[S.i],im=!!q.image_path;return`<div class="bg-white rounded-2xl p-5 shadow space-y-4"><div class="flex justify-between items-center"><div><div class="text-xs text-slate-500">${E(S.title)} · ${E(S.subject)}</div><div class="font-semibold">Pregunta ${S.i+1} de ${S.qs.length}</div></div><div class="text-right"><div class="text-xs text-slate-500">Tiempo restante</div><div id="clk" class="font-mono text-2xl font-bold text-indigo-700">${fmt(S.left)}</div></div></div>
   <div class="h-2 bg-slate-200 rounded"><div class="h-2 bg-indigo-500 rounded" style="width:${S.left/S.total*100}%"></div></div>${vQBody(q,true)}
-  <div class="${im?'':'grid gap-2'}" style="${im?'display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem':''}">${q.options.map((o,k)=>`<button onclick="S.ans['${q.id}']=${k};render()" class="${im?'text-center':'text-left'} p-3 rounded-lg border ${S.ans[q.id]===k?'border-indigo-600 bg-indigo-50':'border-slate-200 hover:bg-slate-50'}"><b>${'ABCD'[k]}${im?'':'.'}</b>${im?'':' '+E(o)}</button>`).join('')}</div>
+  <div class="${im?'':'grid gap-2'}" style="${im?'display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem':''}">${q.options.map((o,k)=>`<button onclick="S.ans['${q.id}']=${k};scheduleGeneralSave(S);render()" class="${im?'text-center':'text-left'} p-3 rounded-lg border ${S.ans[q.id]===k?'border-indigo-600 bg-indigo-50':'border-slate-200 hover:bg-slate-50'}"><b>${'ABCD'[k]}${im?'':'.'}</b>${im?'':' '+E(o)}</button>`).join('')}</div>
   <div class="flex justify-between"><button ${S.i?'':'disabled'} onclick="S.i--;render()" class="px-4 py-2 rounded-lg bg-slate-200 disabled:opacity-40">← Anterior</button>${S.i<S.qs.length-1?`<button onclick="S.i++;render()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white">Siguiente →</button>`:`<button onclick="finish(false)" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">Finalizar y calificar</button>`}</div></div>`}
   if(!M.course_id)return`<div class="bg-white rounded-2xl p-6 shadow text-center space-y-2"><div class="text-4xl">🕒</div><h2 class="text-xl font-bold">Tu docente aún no te ha asignado a un curso</h2><p class="text-sm text-slate-600">Cuando lo haga, aquí verás los simulacros y las tareas de tu curso.</p></div>`;
   const av=D.avail||{},sims=(D.sims||[]).filter(s=>s.active);
