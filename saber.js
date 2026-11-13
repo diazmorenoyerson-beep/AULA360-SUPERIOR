@@ -108,6 +108,7 @@ async function start(sid,s){
     const serverSaved=started.answers&&typeof started.answers==='object'?started.answers:{};
     const saved={...(localSaved&&typeof localSaved==='object'?localSaved:{}),...serverSaved};
     Z.run={sim,sesion:s,qs,ans:saved,i:0,total,left,runId:started.run_id,expiresAt:started.expires_at,storeKey,resumed:!!started.resumed,sending:false,saveChain:Promise.resolve(),serverSaved};
+    if(Object.keys(saved).length&&JSON.stringify(saved)!==JSON.stringify(serverSaved))scheduleServerSave(Z.run);
 
     clearInterval(Z.timer);
     Z.timer=setInterval(()=>{
@@ -133,6 +134,7 @@ async function finish(auto){
   clearTimeout(R.saveTimer);
   try{
     if(auto){
+      try{await queueServerAnswers(R)}catch(e){}
       try{await (R.saveChain||Promise.resolve())}catch(e){}
     }else{
       try{await queueServerAnswers(R)}
