@@ -124,8 +124,21 @@ function viewDoc(){
   <div class="aic-card" style="padding:18px"><h3 style="font-weight:800;margin-bottom:10px">Mis pruebas</h3>${lista}</div></div>`;
 }
 function detHtml(){
-  const d=Z.det;if(!d.rows)return'<p style="font-size:13px">Cargando…</p>';
-  return`<div class="aic-table-wrap" style="margin-top:10px"><table><thead><tr><th>ESTUDIANTE</th><th>ACIERTOS</th><th>NOTA /100</th><th>FECHA</th><th>ENTREGA</th></tr></thead><tbody>${d.rows.map(r=>`<tr><td>${e(r.profiles?.full_name||'')}</td><td>${r.correct}/${r.total}</td><td><b>${r.score}</b></td><td>${fmtF(r.created_at)}</td><td>${r.automatic?'Automática':'Entregada'}</td></tr>`).join('')||'<tr><td colspan="5">Nadie la ha presentado.</td></tr>'}</tbody></table></div>`;
+  const d=Z.det;if(!d.report)return'<p style="font-size:13px">Cargando informe académico…</p>';
+  const r=d.report,p=r.prueba||{},courses=r.cursos||[],students=r.estudiantes||[];
+  const pct=(a,b)=>b?Math.round(a*100/b):0;
+  return`<div style="margin-top:12px;display:grid;gap:12px">
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
+    <div class="aic-card" style="padding:12px"><small>Preguntas</small><div style="font-size:23px;font-weight:900">${r.total_preguntas||0}</div></div>
+    <div class="aic-card" style="padding:12px"><small>Intentos entregados</small><div style="font-size:23px;font-weight:900">${r.total_intentos||0}</div></div>
+    <div class="aic-card" style="padding:12px"><small>Cursos asignados</small><div style="font-size:23px;font-weight:900">${courses.length}</div></div>
+    <div class="aic-card" style="padding:12px"><small>Estudiantes asignados</small><div style="font-size:23px;font-weight:900">${students.length}</div></div>
+   </div>
+   <div><b>Participación y resultados por curso</b><div class="aic-table-wrap"><table><thead><tr><th>CURSO</th><th>MATRICULADOS</th><th>PRESENTARON</th><th>PARTICIPACIÓN</th><th>INTENTOS</th><th>PROMEDIO /100</th></tr></thead><tbody>${courses.map(x=>`<tr><td>${e(x.grado)}° ${e(x.curso)}</td><td>${x.matriculados}</td><td>${x.presentaron}</td><td><b>${pct(x.presentaron,x.matriculados)}%</b></td><td>${x.intentos}</td><td>${x.promedio==null?'—':x.promedio}</td></tr>`).join('')||'<tr><td colspan="6">Sin cursos asignados.</td></tr>'}</tbody></table></div></div>
+   <div><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b>Seguimiento individual</b><button class="aic-link" onclick="PER.exportar('${d.id}')">⬇ Exportar CSV</button></div>
+    <div class="aic-table-wrap"><table><thead><tr><th>ESTUDIANTE</th><th>CURSO</th><th>INTENTOS</th><th>MEJOR NOTA</th><th>ÚLTIMA NOTA</th><th>ÚLTIMA ENTREGA</th><th>TIPO</th></tr></thead><tbody>${students.map(x=>`<tr><td>${e(x.nombre||'')}</td><td>${e(x.grado)}° ${e(x.curso)}</td><td>${x.intentos}</td><td>${x.mejor_nota??'—'}</td><td><b>${x.ultima_nota??'—'}</b></td><td>${fmtF(x.ultimo_envio)}</td><td>${x.entrega_automatica?'Automática':x.intentos?'Entregada':'Pendiente'}</td></tr>`).join('')||'<tr><td colspan="7">No hay estudiantes matriculados en los cursos asignados.</td></tr>'}</tbody></table></div>
+   </div>
+  </div>`;
 }
 /* ---------- vista estudiante ---------- */
 function viewEst(){
@@ -166,9 +179,17 @@ const api={
   async resultados(id){
     if(Z.det&&Z.det.id===id){Z.det=null;return rerender()}
     Z.det={id};rerender();
-    const r=await sb.from('periodo_intentos').select('correct,total,score,created_at,automatic,profiles(full_name)').eq('prueba_id',id).order('created_at',{ascending:false});
+    const r=await sb.rpc('periodo_reporte',{p_prueba:id});
     if(r.error){Z.det=null;rerender();return err(r.error)}
-    Z.det={id,rows:r.data||[]};rerender();
+    Z.det={id,report:r.data};rerender();
+  },
+  exportar(id){
+    const d=Z.det;if(!d||d.id!==id||!d.report)return;
+    const rows=[['Estudiante','Curso','Grado','Intentos','Mejor nota','Última nota','Última entrega','Tipo de entrega']];
+    (d.report.estudiantes||[]).forEach(x=>rows.push([x.nombre,x.curso,x.grado,x.intentos,x.mejor_nota??'',x.ultima_nota??'',x.ultimo_envio??'',x.entrega_automatica?'Automática':x.intentos?'Entregada':'Pendiente']));
+    const csv='\\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\\r\\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='informe-prueba-periodo-'+id+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
   },
   async empezar(id){
     const r=await sb.rpc('periodo_preguntas',{p_prueba:id});if(r.error)return err(r.error);
