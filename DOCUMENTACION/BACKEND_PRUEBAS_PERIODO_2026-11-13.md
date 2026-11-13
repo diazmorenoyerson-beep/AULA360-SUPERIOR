@@ -50,3 +50,19 @@ Seguridad:
 - No se han creado exámenes de prueba ni se han inventado preguntas.
 - No se ha desplegado a Vercel ni fusionado a `main`.
 - Pendiente: QA autenticado con docente y estudiante, una vez el banco tenga preguntas publicadas y claves válidas; revisar también la compilación global del frontend.
+
+
+## Informe académico por prueba
+
+Se añadió el RPC `periodo_reporte(p_prueba)`, protegido por propietario o rol rector/coordinador del mismo colegio. Devuelve:
+
+- Resumen de la prueba, cantidad de preguntas e intentos entregados.
+- Por curso: estudiantes matriculados activos, participantes únicos, intentos y promedio de notas.
+- Por estudiante: intentos, mejor nota, última nota, fecha del último envío y si fue automático.
+- No devuelve claves ni respuestas del examen.
+
+El frontend `periodo.js` ahora presenta indicadores, participación por curso, seguimiento individual y exportación CSV.
+
+Migración: `database/2026-11-13_periodo_academic_report.sql`.
+
+No se presentan bandas de riesgo ni niveles de desempeño inventados; esos criterios deben definirse institucionalmente antes de incorporarlos.
