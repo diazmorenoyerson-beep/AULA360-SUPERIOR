@@ -258,6 +258,8 @@ window.SABER={
     try{
       if(!F.t.trim())throw new Error('Escribe un nombre para el simulacro.');
       if(!F.c.length)throw new Error('Marca al menos un curso.');
+      if(F.due&&new Date(F.due+'T23:59:00')<=new Date())throw new Error('La fecha límite debe ser hoy o un día futuro.');
+      if((F.d||'').length>500)throw new Error('Las indicaciones no pueden superar 500 caracteres.');
       const req=F.m==='sesion1'?{'Matemáticas':25,'Lectura Crítica':41,'Sociales y Ciudadanas':25,'Ciencias Naturales':29}:F.m==='sesion2'?{'Matemáticas':25,'Sociales y Ciudadanas':25,'Ciencias Naturales':29,'Inglés':55}:{'Matemáticas':50,'Lectura Crítica':41,'Sociales y Ciudadanas':50,'Ciencias Naturales':58,'Inglés':55};
       const faltan=Object.entries(req).filter(([a,n])=>disponible(a)<n);
       if(faltan.length&&!confirm('El banco no tiene suficientes preguntas publicadas y calificables para completar '+faltan.map(([a,n])=>a+' ('+disponible(a)+'/'+n+')').join(', ')+'.\\n\\nSe creará un simulacro PARCIAL con las preguntas disponibles. ¿Continuar?'))return;
