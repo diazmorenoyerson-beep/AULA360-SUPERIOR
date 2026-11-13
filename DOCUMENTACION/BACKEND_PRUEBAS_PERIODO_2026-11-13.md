@@ -19,6 +19,7 @@ RPC disponibles:
 - `periodo_preguntas`: verifica estudiante, curso destinatario, publicación, ventana y máximo de intentos; inicia o reanuda el intento y devuelve vencimiento y respuestas previamente guardadas.
 - `periodo_guardar_respuestas`: persiste respuestas en servidor, valida que pertenezcan al examen y que la opción exista; no acepta cambios después del vencimiento.
 - `periodo_enviar`: calcula la nota exclusivamente con claves del servidor, calcula el tiempo desde el inicio registrado y congela las respuestas guardadas si el tiempo ya venció.
+- Al abrir y calificar vuelve a comprobar que todas las preguntas conserven claves válidas; si una clave desaparece o se invalida, no calcula una nota parcial injusta.
 
 Seguridad:
 - RLS por docente propietario, curso asignado y colegio para rector/coordinador.
