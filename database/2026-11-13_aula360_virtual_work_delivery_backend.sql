@@ -47,7 +47,7 @@ create table public.virtual_entregas (
   id uuid primary key default gen_random_uuid(),
   trabajo_id uuid not null references public.virtual_trabajos(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
-  docente_id uuid not null references public.profiles(id) on delete cascade,
+  docente_id uuid not null,
   colegio_id bigint not null,
   nombre text not null check (char_length(btrim(nombre)) between 1 and 255),
   size bigint not null check (size between 1 and 26214400),
