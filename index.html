@@ -357,7 +357,7 @@ async function go(t){
     if(t==='permisos'){await loadScript('permisos.js?v=4');await PERM.load()}
     if(['periodo','virtual','plan','saberimp','diag'].includes(t)){
       const MOD={periodo:['periodo.js','PER'],virtual:['virtual.js','VIRT'],plan:['docente.js','DOCP'],diario:['docente.js','DOCP'],saberimp:['saberimp.js','SIMP'],diag:['saberimp.js','SIMP']}[t];
-      await loadScript(MOD[0]+'?v=8');await window[MOD[1]].load(t)}
+      await loadScript(MOD[0]+'?v=9');await window[MOD[1]].load(t)}
     if(t==='perfil'){const {data:u}=await sb.auth.getUser();D.email=(u&&u.user&&u.user.email)||''}
     if(['dcol','ddoc','dcoo','dhist','dadm'].includes(t)){await loadScript('colegio.js?v=9');await DIR.load(t)}
     if(['dhor','mhor'].includes(t)){await loadScript('horarios.js?v=4');await HZUI.load(t)}
