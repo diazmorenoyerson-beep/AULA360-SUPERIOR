@@ -1025,3 +1025,22 @@ body{
 @media(prefers-reduced-motion:reduce){
   body{background-attachment:scroll!important}
 }
+
+/* Hacer visible el fondo también a través de los paneles de cada módulo */
+#app .bg-white:not(button):not(input):not(.sb-answer){
+  background-color:rgba(222,237,247,.82)!important;
+  -webkit-backdrop-filter:blur(13px);
+  backdrop-filter:blur(13px);
+}
+#app .aic-card,#app .aic-kpi,#app .aic-row,
+#app>.max-w-md,#app>.max-w-md.bg-white{
+  background-color:rgba(222,237,247,.82)!important;
+  -webkit-backdrop-filter:blur(15px);
+  backdrop-filter:blur(15px);
+}
+#app .aic-main .aic-card table thead th{
+  background:rgba(211,228,239,.90)!important;
+}
+#app .aic-main .aic-card table tbody td{
+  background:rgba(239,247,251,.72)!important;
+}
