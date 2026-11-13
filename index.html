@@ -47,9 +47,10 @@
   <button onclick="resend()" class="w-full text-xs text-slate-500 underline">Reenviar correo de confirmación</button></div></div>
 <div id="toast" class="fixed top-4 right-4 z-50 space-y-2"></div>
 <script>
-let sb=window.supabase?.createClient?window.supabase.createClient(window.AULA360_SUPABASE.url,window.AULA360_SUPABASE.publishableKey):null;
-const IMG=window.AULA360_SUPABASE.storage.questions;
-const LOGO=window.AULA360_SUPABASE.storage.schoolLogos;
+const CFG=window.AULA360_SUPABASE||{};
+let sb=(window.supabase?.createClient&&CFG.url&&CFG.publishableKey)?window.supabase.createClient(CFG.url,CFG.publishableKey):null;
+const IMG=CFG.storage?.questions||'';
+const LOGO=CFG.storage?.schoolLogos||'';
 const MEDALS={first:['🥇','Primer Paso','Completar tu primer simulacro'],perfect:['🧠','Mente Brillante','100% de respuestas correctas'],clock:['⏱️','Contra el Reloj','Terminar con más de la mitad del tiempo restante'],streak:['🔥','Constante','Completar 3 simulacros'],high:['⭐','Alto Puntaje','Obtener 80 o más']};
 const isDir=()=>!!M&&(M.role==='rector'||M.role==='coordinador');
 const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
