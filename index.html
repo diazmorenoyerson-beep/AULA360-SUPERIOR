@@ -340,7 +340,7 @@ async function go(t){
   leaveChat();tab=t;
   try{
     if(t==='saber'){await loadScript('saber.js?v=2');await SABER.load()}
-    if(t==='institucional'){await loadScript('institucional.js?v=3');await INST.load()}
+    if(t==='institucional'){await loadScript('institucional.js?v=4');await INST.load()}
     if(t==='clase'&&M.role==='prof'){await loadScript('aulavirtual.js?v=2')}
     if(t==='aclase'||t==='asistencias'){await loadScript('claseasis.js?v=7');await ACL.load()}
     if(t==='planeador'||t==='diario'){await loadScript('planeador.js?v=3');await PLN.load()}
