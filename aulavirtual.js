@@ -3,7 +3,7 @@
 window.AV=(function(){
 let sub='vivo',busy=false;
 const SUBS=[['vivo','🎥 Clase en vivo'],['pizarron','🖍 Pizarrón'],['asist','✋ Asistencia virtual'],['examenes','📝 Exámenes virtuales'],['trabajos','📎 Trabajos'],['talleres','✅ Calificar talleres']];
-const MODS={asist:['claseasis.js?v=5','ACL','load'],examenes:['periodo.js?v=5','PER','load'],trabajos:['virtual.js?v=4','VIRT','load'],talleres:['talleres.js?v=1','TAL','load']};
+const MODS={asist:['claseasis.js?v=5','ACL','load'],examenes:['periodo.js?v=5','PER','load'],trabajos:['virtual.js?v=5','VIRT','load'],talleres:['talleres.js?v=1','TAL','load']};
 function tabs(){return`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">${SUBS.map(([k,l])=>`<button onclick="AV.go('${k}')" style="padding:10px 14px;border-radius:10px;font-weight:700;font-size:13px;${sub===k?'background:#246be0;color:#fff':'background:#fff;border:1px solid #cbd5e1'}">${l}</button>`).join('')}</div>`}
 function body(){
   switch(sub){
