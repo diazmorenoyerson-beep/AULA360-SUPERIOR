@@ -99,7 +99,7 @@ async function start(sid,s){
 }
 function confirmStart(sid,s){
   const sim=Z.sims.find(x=>x.id===sid),n=itemsDe(sid,s).length;
-  if(confirm('Vas a presentar la Sesión '+s+' ('+n+' preguntas, '+minSesion(sid,s)+' minutos).\n\nEl tiempo empieza ya y no se puede pausar. No cierres ni recargues la página.\n\n¿Empezar?'))start(sid,s)}
+  if(confirm('Vas a presentar la Sesión '+s+' ('+n+' preguntas, '+minSesion(sid,s)+' minutos).\n\nEl tiempo empieza ya y no se puede pausar. Si recargas, el reloj seguirá corriendo y podrás reanudar desde el mismo navegador; tus respuestas guardadas en este dispositivo se recuperarán.\n\n¿Empezar?'))start(sid,s)}
 async function finish(auto){
   const R=Z.run;if(!R||R.sending)return;
   if(!auto){const sin=R.qs.filter(q=>R.ans[q.id]==null).length;
@@ -163,7 +163,7 @@ function vEst(){
     const historialHtml=historial.length?`<details class="mt-3 rounded-xl p-3" style="background:#f8fafd;border:1px solid #e2e8f0"><summary class="cursor-pointer text-sm font-semibold">Historial y evolución · ${historial.length} intento(s)</summary><div class="mt-2">${evolucion}<div class="aic-table-wrap mt-2"><table class="w-full text-xs text-left"><thead><tr><th>Fecha</th><th>Sesión</th><th>Resultado</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>${historial.slice().reverse().map(a=>`<tr class="border-t"><td class="py-2">${fdate(a.created_at)}</td><td>${a.sesion}</td><td><b>${a.correct}/${a.total} · ${a.total?pct(a.correct,a.total):0}%</b></td><td>${mmss(a.seconds_used||0)}</td><td>${a.auto?'Automático':'Entregado'}</td></tr>`).join('')}</tbody></table></div></div></details>`:'';
     return`<div class="aic-card space-y-3"><div><div class="font-bold" style="color:#102a5c;font-size:1.05rem">🎯 ${esc(s.title)}</div>${s.due_at?`<div class="text-xs ${exp?'text-red-600':'text-slate-500'}">${exp?'⛔ Venció el ':'Fecha límite: '}${fdate(s.due_at)}</div>`:''}${s.description?`<div class="text-sm text-slate-600" style="white-space:pre-wrap">${esc(s.description)}</div>`:''}
       ${falta.length?`<div class="text-xs" style="color:#b45309">Simulacro parcial: todavía no están todas las preguntas oficiales de ${[...new Set(falta.map(x=>x.area))].join(', ')}.</div>`:''}</div><div class="grid sm:grid-cols-2 gap-3">${bloques}</div>${res}${historialHtml}</div>`}).join('');
-  return`<div class="space-y-4"><div class="aic-card"><h3 class="font-bold" style="color:#102a5c">🎯 Simulacros tipo Saber 11</h3><p class="text-sm text-slate-600">Dos sesiones de 4 horas y 30 minutos, con la misma estructura del examen. Una vez empiezas, el tiempo no se detiene. No recargues la página.</p></div>${cards||'<div class="aic-card text-center text-slate-600">Todavía no tienes simulacros Saber 11 asignados. Tu docente los publicará aquí.</div>'}</div>`;
+  return`<div class="space-y-4"><div class="aic-card"><h3 class="font-bold" style="color:#102a5c">🎯 Simulacros tipo Saber 11</h3><p class="text-sm text-slate-600">Dos sesiones de 4 horas y 30 minutos, con la misma estructura del examen. Una vez empiezas, el tiempo no se detiene. Si necesitas recargar, podrás reanudar la sesión desde el mismo navegador y recuperar las respuestas guardadas en este dispositivo.</p></div>${cards||'<div class="aic-card text-center text-slate-600">Todavía no tienes simulacros Saber 11 asignados. Tu docente los publicará aquí.</div>'}</div>`;
 }
 
 /* ---------- docente ---------- */
