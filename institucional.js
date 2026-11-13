@@ -11,11 +11,13 @@
   async function load(){
     loading=true;error='';render();
     try{
-      const [r,cr]=await Promise.all([sb.rpc('informe_institucional'),sb.rpc('informe_competencias_institucional')]);
+      const [r,cr,gr]=await Promise.all([sb.rpc('informe_institucional'),sb.rpc('informe_competencias_institucional'),sb.rpc('informe_simulacros_generales')]);
       if(r.error)throw r.error;
       if(cr.error)throw cr.error;
+      if(gr.error)throw gr.error;
       data=r.data||{};
       data.competencies=cr.data?.competencies||[];
+      data.simulacros_generales=gr.data?.rows||[];
       expanded.clear();
     }catch(e){error=e?.message||String(e);data=null}
     finally{loading=false;render()}
@@ -26,20 +28,20 @@
   function studentTable(x,key){
     const id=key+':'+x.test_id+':'+x.course_id;
     const open=expanded.has(id),students=Array.isArray(x.students)?x.students:[];
-    const isPeriodo=key==='periodo',isOnline=key==='saber_online';
+    const isPeriodo=key==='periodo',isOnline=key==='saber_online',isGeneral=key==='simulacros_generales';
     const cols=isPeriodo
       ? '<th>ESTUDIANTE</th><th>INTENTOS</th><th>MEJOR NOTA / 100</th><th>ÚLTIMA NOTA / 100</th><th>ÚLTIMO ENVÍO</th><th>ENTREGA</th>'
-      : isOnline
+      : isOnline||isGeneral
       ? '<th>ESTUDIANTE</th><th>INTENTOS</th><th>CORRECTAS</th><th>PREGUNTAS</th><th>ACIERTOS</th><th>ÚLTIMA ACTIVIDAD</th>'
       : '<th>ESTUDIANTE</th><th>HOJAS / CUADERNILLOS</th><th>CORRECTAS</th><th>PREGUNTAS</th><th>ACIERTOS</th><th>ÚLTIMA CALIFICACIÓN</th>';
     const body=students.map(s=>'<tr><td><b>'+esc(s.student||'Estudiante')+'</b></td>'+
       (isPeriodo?'<td>'+num(s.attempts)+'</td><td>'+num(s.best_score)+'</td><td>'+num(s.latest_score)+'</td><td>'+date(s.latest_submitted_at)+'</td><td>'+(s.automatic?'Automática':'Normal')+'</td>'
-      :'<td>'+num(isOnline?s.attempts:s.sheets)+'</td><td>'+num(s.correct)+'</td><td>'+num(s.total)+'</td><td><b>'+pct(s.pct)+'</b></td><td>'+date(s.last_at)+'</td>')+'</tr>').join('');
-    const avg=isPeriodo?num(x.average_score):pct(x.average_pct);
+      :'<td>'+num(isOnline||isGeneral?s.attempts:s.sheets)+'</td><td>'+num(s.correct)+'</td><td>'+num(s.total)+'</td><td><b>'+pct(s.pct)+'</b></td><td>'+date(s.last_at)+'</td>')+'</tr>').join('');
+    const avg=isPeriodo||isGeneral?num(isPeriodo?x.average_score:x.average_pct):pct(x.average_pct);
     const coverage=Number(x.enrolled)>0?Number(x.participants||0)/Number(x.enrolled)*100:null;
     const pending=Math.max(0,Number(x.enrolled||0)-Number(x.participants||0));
-    const attempts=isPeriodo||isOnline?num(x.attempts):num(x.sheets);
-    const label=isPeriodo?'Intentos':isOnline?'Intentos':'Hojas calificadas';
+    const attempts=isPeriodo||isOnline||isGeneral?num(x.attempts):num(x.sheets);
+    const label=isPeriodo||isOnline||isGeneral?'Intentos':'Hojas calificadas';
     return '<article class="aic-card" style="padding:14px;margin:10px 0">'+
       '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">'+
       '<div><b>'+esc(x.title||'Evaluación')+'</b><div style="font-size:12px;color:#64748b;margin-top:3px">'+esc(x.course||'Curso')+' · '+esc(x.grade??'')+'°'+(x.subject?' · '+esc(x.subject):'')+(x.period?' · Periodo '+esc(x.period):'')+(x.exam_date?' · '+date(x.exam_date):'')+'</div></div>'+
@@ -50,7 +52,7 @@
       '<span><small style="color:#64748b">Cobertura</small><br><b>'+pct(coverage)+'</b></span>'+
       '<span><small style="color:#64748b">Pendientes</small><br><b>'+num(pending)+'</b></span>'+
       '<span><small style="color:#64748b">'+label+'</small><br><b>'+attempts+'</b></span>'+
-      '<span><small style="color:#64748b">'+(isPeriodo?'Promedio de nota / 100':'Promedio de aciertos')+'</small><br><b>'+avg+(isPeriodo?'':'')+'</b></span></div>'+
+      '<span><small style="color:#64748b">'+(isPeriodo||isGeneral?'Promedio de nota / 100':'Promedio de aciertos')+'</small><br><b>'+avg+(isPeriodo?'':'')+'</b></span></div>'+
       (open?'<div class="aic-table-wrap" style="margin-top:12px"><table><thead><tr>'+cols+'</tr></thead><tbody>'+(body||'<tr><td colspan="6">No hay estudiantes con entregas calificadas.</td></tr>')+'</tbody></table></div>':'')+
       '</article>';
   }
@@ -69,6 +71,7 @@
   function exportCsv(){
     const rows=[['fuente','evaluacion','curso','grado','estudiante','intentos_hojas','correctas','preguntas','porcentaje_aciertos','mejor_nota_100','ultima_nota_100','fecha']];
     for(const x of (data?.competencies||[])){rows.push(['Análisis por competencia',x.title,x.course,x.grade,x.competency,'',x.correct,x.total,x.pct??'', '', '',x.exam_date??''])}
+    for(const x of rowsFor('simulacros_generales'))for(const st of (x.students||[]))rows.push(['Simulacro general',x.title,x.course,x.grade,st.student,st.attempts,st.correct,st.total,st.pct,st.best_score,st.latest_score,st.last_at]);
     for(const key of ['periodo','saber_online','impresos','diagnosticos']){
       const label={periodo:'Prueba de periodo',saber_online:'Saber 11 en línea',impresos:'Simulacro impreso',diagnosticos:'Diagnóstico'}[key];
       for(const x of rowsFor(key))for(const s of (x.students||[])){
@@ -82,7 +85,7 @@
     if(loading)return '<div class="aic-card" style="padding:24px">⏳ Consultando los resultados institucionales…</div>';
     if(error)return '<div class="aic-card" style="padding:20px"><b>No se pudo cargar el informe</b><p style="color:#b91c1c;font-size:13px;margin:6px 0">'+esc(error)+'</p><button class="aic-link" onclick="INST.load()">Reintentar</button></div>';
     if(!data)return '<div class="aic-card" style="padding:20px"><b>Informe institucional</b><p>Consulta las pruebas y simulacros registrados en AULA360.</p><button class="aic-link" onclick="INST.load()">Cargar informe</button></div>';
-    const counts=[['Pruebas de periodo',rowsFor('periodo').length,'🧪'],['Saber 11 en línea',rowsFor('saber_online').length,'💻'],['Simulacros impresos',rowsFor('impresos').length,'🖨️'],['Diagnósticos',rowsFor('diagnosticos').length,'🩺']];
+    const counts=[['Pruebas de periodo',rowsFor('periodo').length,'🧪'],['Saber 11 en línea',rowsFor('saber_online').length,'💻'],['Simulacros generales',rowsFor('simulacros_generales').length,'📝'],['Simulacros impresos',rowsFor('impresos').length,'🖨️'],['Diagnósticos',rowsFor('diagnosticos').length,'🩺']];
     const scope=data.scope?.role==='rector'?'Vista institucional · Rector':data.scope?.role==='coordinador'?'Vista institucional · Coordinador':'Vista de tus cursos · Docente';
     return '<div><section class="aic-hero"><div class="aic-hero-copy"><span class="aic-kicker">CENTRO DE EVALUACIÓN</span><h2>Informe institucional unificado</h2><p>Participación y resultados de las cuatro fuentes de evaluación, sin mezclar sus escalas.</p><div class="aic-hero-actions"><button onclick="INST.load()">↻ Actualizar informe</button><button class="ghost" onclick="INST.csv()">↓ Exportar CSV</button></div></div><div class="aic-hero-art"><div class="aic-orbit orbit1"></div><div class="aic-orbit orbit2"></div><div class="aic-book">📊</div><div class="aic-cap">🎓</div></div></section>'+
       '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:12px 0"><span class="aic-chip">'+scope+'</span><span style="font-size:12px;color:#64748b">Actualizado: '+date(data.generated_at)+'</span></div>'+
@@ -90,6 +93,7 @@
       '<div class="aic-card" style="padding:14px;margin-top:12px;font-size:12px;color:#64748b">Las pruebas de periodo conservan su nota de 0 a 100. Saber 11 en línea, impresos y diagnósticos muestran porcentaje de respuestas correctas. Los porcentajes no se convierten en puntajes oficiales ICFES. Los cursos sin estudiantes o sin entregas no generan resultados ficticios.</div>'+
       section('periodo','Pruebas de periodo','Notas, participación, intentos y seguimiento por estudiante · escala 0–100')+
       section('saber_online','Simulacros Saber 11 en línea','Participación y porcentaje de respuestas correctas por estudiante')+
+      section('simulacros_generales','Simulacros generales','Resultados de simulacros por asignatura y curso · escala porcentual 0–100')+
       section('impresos','Simulacros Saber 11 impresos','Hojas calificadas y resultados consolidados por estudiante')+
       section('diagnosticos','Diagnósticos por grupo','Resultados de las hojas de diagnóstico y áreas evaluadas')+
       competencySection()+
