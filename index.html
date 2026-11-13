@@ -819,7 +819,7 @@ function scheduleGeneralSave(R){
 }
 async function flushGeneralSave(R){
   if(R.saveTimer){clearTimeout(R.saveTimer);R.saveTimer=null}
-  await R.saveChain;
+  await R.saveChain.catch(()=>{});
   if(Date.now()>=Date.parse(R.expiresAt))return;
   const{error}=await sb.rpc('save_general_sim_answers',{p_run:R.runId,p_answers:R.ans});
   if(error)throw error;
