@@ -96,9 +96,15 @@ create policy periodo_items_read_scope on public.periodo_items for select to aut
  ))
 );
 drop policy if exists periodo_items_manage_teacher on public.periodo_items;
-create policy periodo_items_manage_teacher on public.periodo_items for all to authenticated using (
+create policy periodo_items_insert_teacher on public.periodo_items for insert to authenticated with check (
+ exists(select 1 from public.periodo_pruebas p where p.id=prueba_id and p.teacher_id=auth.uid() and p.estado='borrador')
+);
+create policy periodo_items_update_teacher on public.periodo_items for update to authenticated using (
  exists(select 1 from public.periodo_pruebas p where p.id=prueba_id and p.teacher_id=auth.uid() and p.estado='borrador')
 ) with check (
+ exists(select 1 from public.periodo_pruebas p where p.id=prueba_id and p.teacher_id=auth.uid() and p.estado='borrador')
+);
+create policy periodo_items_delete_teacher on public.periodo_items for delete to authenticated using (
  exists(select 1 from public.periodo_pruebas p where p.id=prueba_id and p.teacher_id=auth.uid() and p.estado='borrador')
 );
 
@@ -110,11 +116,22 @@ create policy periodo_targets_read_scope on public.periodo_targets for select to
  ))
 );
 drop policy if exists periodo_targets_manage_teacher on public.periodo_targets;
-create policy periodo_targets_manage_teacher on public.periodo_targets for all to authenticated using (
+create policy periodo_targets_insert_teacher on public.periodo_targets for insert to authenticated with check (
+ exists(select 1 from public.periodo_pruebas p where p.id=prueba_id and p.teacher_id=auth.uid() and p.estado='borrador')
+ and exists(select 1 from public.courses c join public.periodo_pruebas p on p.id=prueba_id where c.id=course_id and c.grade=p.grado and (
+ c.teacher_id=p.teacher_id or (public.aula360_my_role() in ('rector','coordinador') and c.colegio_id=p.colegio_id and p.colegio_id is not null)
+ ))
+);
+create policy periodo_targets_update_teacher on public.periodo_targets for update to authenticated using (
  exists(select 1 from public.periodo_pruebas p where p.id=prueba_id and p.teacher_id=auth.uid() and p.estado='borrador')
 ) with check (
  exists(select 1 from public.periodo_pruebas p where p.id=prueba_id and p.teacher_id=auth.uid() and p.estado='borrador')
- and exists(select 1 from public.courses c join public.periodo_pruebas p on p.id=prueba_id where c.id=course_id and c.grade=p.grado and (c.teacher_id=p.teacher_id or (public.aula360_my_role() in ('rector','coordinador') and c.colegio_id=p.colegio_id and p.colegio_id is not null)))
+ and exists(select 1 from public.courses c join public.periodo_pruebas p on p.id=prueba_id where c.id=course_id and c.grade=p.grado and (
+ c.teacher_id=p.teacher_id or (public.aula360_my_role() in ('rector','coordinador') and c.colegio_id=p.colegio_id and p.colegio_id is not null)
+ ))
+);
+create policy periodo_targets_delete_teacher on public.periodo_targets for delete to authenticated using (
+ exists(select 1 from public.periodo_pruebas p where p.id=prueba_id and p.teacher_id=auth.uid() and p.estado='borrador')
 );
 
 drop policy if exists periodo_attempts_read_scope on public.periodo_intentos;
