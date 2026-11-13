@@ -83,7 +83,7 @@ async function start(sid,s){
     const storeKey='aula360_saber_run_'+started.run_id;
     let saved={};
     try{saved=JSON.parse(localStorage.getItem(storeKey)||'{}')}catch(e){saved={}}
-    Z.run={sim,sesion:s,qs,ans:saved&&typeof saved==='object'?saved:{},i:0,total,left,runId:started.run_id,expiresAt:started.expires_at,storeKey,sending:false};
+    Z.run={sim,sesion:s,qs,ans:saved&&typeof saved==='object'?saved:{},i:0,total,left,runId:started.run_id,expiresAt:started.expires_at,storeKey,resumed:!!started.resumed,sending:false};
     clearInterval(Z.timer);
     Z.timer=setInterval(()=>{
       if(!Z.run){clearInterval(Z.timer);return}
@@ -119,7 +119,7 @@ function vQuiz(){
   const R=Z.run,q=R.qs[R.i],im=!!q.image_path;
   const pal=R.qs.map((x,k)=>{const a=R.ans[x.id]!=null,cur=k===R.i;return`<button type="button" aria-label="Ir a la pregunta ${k+1}${a?', respondida':', sin responder'}" aria-current="${cur?'step':'false'}" onclick="SABER.go(${k})" class="sb-qnav ${a?'is-answered':''} ${cur?'is-current':''}">${k+1}</button>`}).join('');
   const hecho=Object.values(R.ans).filter(v=>v!=null).length;
-  return`<div class="space-y-3"><div class="aic-card"><div class="flex flex-wrap justify-between items-center gap-3"><div><div class="text-xs text-slate-500">${esc(R.sim.title)} · Sesión ${R.sesion}</div><div class="font-semibold">${esc(q.area)} · Pregunta ${R.i+1} de ${R.qs.length}</div><div class="text-xs text-slate-500">${hecho} respondidas</div></div><div class="text-right"><div class="text-xs text-slate-500">Tiempo restante</div><div id="sbclk" style="font-family:monospace;font-size:1.6rem;font-weight:800;color:${R.left<300?'#dc2626':'#1d4ed8'}">${mmss(R.left)}</div></div></div>
+  return`<div class="space-y-3"><div class="aic-card"><div class="flex flex-wrap justify-between items-center gap-3"><div><div class="text-xs text-slate-500">${esc(R.sim.title)} · Sesión ${R.sesion}${R.resumed?' · Sesión reanudada':''}</div><div class="font-semibold">${esc(q.area)} · Pregunta ${R.i+1} de ${R.qs.length}</div><div class="text-xs text-slate-500">${hecho} respondidas</div></div><div class="text-right"><div class="text-xs text-slate-500">Tiempo restante</div><div id="sbclk" style="font-family:monospace;font-size:1.6rem;font-weight:800;color:${R.left<300?'#dc2626':'#1d4ed8'}">${mmss(R.left)}</div></div></div>
   <div class="h-2 bg-slate-200 rounded" style="margin-top:.6rem"><div class="h-2 rounded" style="background:#2864e8;width:${Math.max(0,R.left/R.total*100)}%"></div></div></div>
   <div class="aic-card space-y-4">${vQBody(q,true)}
     <div style="${im?'display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem':'display:grid;gap:.5rem'}">${q.options.map((o,k)=>`<button type="button" onclick="SABER.ans('${q.id}',${k})" aria-pressed="${R.ans[q.id]===k}" class="sb-answer ${R.ans[q.id]===k?'is-selected':''}" style="text-align:${im?'center':'left'}"><b>${LET[k]}${im?'':'.'}</b>${im?'':' '+esc(o)}</button>`).join('')}</div>
