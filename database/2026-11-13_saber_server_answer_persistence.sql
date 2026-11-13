@@ -48,7 +48,7 @@ CREATE OR REPLACE FUNCTION public.saber_begin_session(p_sim uuid, p_sesion integ
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public', 'pg_temp'
+ SET search_path TO ''
 AS $function$
 declare
   uid uuid:=auth.uid();
@@ -101,7 +101,7 @@ CREATE OR REPLACE FUNCTION public.saber_submit(p_sim uuid, p_sesion integer, p_a
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public', 'pg_temp'
+ SET search_path TO ''
 AS $function$
 declare
  uid uuid:=auth.uid();
