@@ -47,7 +47,7 @@
   <button onclick="resend()" class="w-full text-xs text-slate-500 underline">Reenviar correo de confirmación</button></div></div>
 <div id="toast" class="fixed top-4 right-4 z-50 space-y-2"></div>
 <script>
-let sb=supabase.createClient(window.AULA360_SUPABASE.url,window.AULA360_SUPABASE.publishableKey);
+let sb=window.supabase?.createClient?window.supabase.createClient(window.AULA360_SUPABASE.url,window.AULA360_SUPABASE.publishableKey):null;
 const IMG=window.AULA360_SUPABASE.storage.questions;
 const LOGO=window.AULA360_SUPABASE.storage.schoolLogos;
 const MEDALS={first:['🥇','Primer Paso','Completar tu primer simulacro'],perfect:['🧠','Mente Brillante','100% de respuestas correctas'],clock:['⏱️','Contra el Reloj','Terminar con más de la mitad del tiempo restante'],streak:['🔥','Constante','Completar 3 simulacros'],high:['⭐','Alto Puntaje','Obtener 80 o más']};
@@ -150,6 +150,7 @@ async function doDocente(){
   boot();
 }
 async function doAuth(){
+  if(!sb)return toast('⚠️','Servicio de acceso no disponible','No se pudo cargar la conexión con Supabase. Recarga la página o revisa tu conexión y el bloqueo de CDN.');
   if(authMode==='docente')return doDocente();
   if(authMode==='directivo'&&window.DIR)return DIR.doReg();
   const email=v('em');let password=document.getElementById('pw')?.value||'';
@@ -1051,7 +1052,7 @@ function render(){
   const by=l=>{const m={};l.forEach(a=>(m[a.subject]=m[a.subject]||[]).push(a.score));return Object.entries(m).map(([k,x])=>[k,avg(x)])};
   if(tab==='est'&&(D.mine||[]).length){const sj=by(D.mine);charts.push(new Chart(document.getElementById('c1'),{type:'bar',data:{labels:sj.map(x=>x[0]),datasets:[{data:sj.map(x=>x[1]),backgroundColor:sj.map(x=>x[1]>=70?'#10b981':x[1]>=50?'#f59e0b':'#ef4444')}]},options:{scales:{y:{min:0,max:100}},plugins:{legend:{display:false}}}}));charts.push(new Chart(document.getElementById('c2'),{type:'line',data:{labels:D.mine.map((a,i)=>'#'+(i+1)),datasets:[{label:'Puntaje',data:D.mine.map(a=>a.score),borderColor:'#4f46e5',tension:.3}]},options:{scales:{y:{min:0,max:100}}}}))}
 }
-boot();
+if(sb)boot();else toast('⚠️','No se pudo conectar','No se cargó el servicio de acceso. Recarga la página o revisa tu conexión.');
 </script>
 <script src="dashboard.js?v=16"></script>
 <script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
