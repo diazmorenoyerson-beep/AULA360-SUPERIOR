@@ -67,6 +67,28 @@ async function todos(mk){let out=[],d=0;for(;;){const r=await mk().range(d,d+999
 async function refresh(){try{await load()}catch(e){err(e)}render()}
 
 /* ---------- estudiante: presentar una sesión ---------- */
+function queueServerAnswers(R){
+  if(!R||!Z.run||Z.run.runId!==R.runId)return Promise.reject(new Error('La sesión ya no está activa.'));
+  const snapshot={...R.ans};
+  const task=(R.saveChain||Promise.resolve()).catch(()=>{}).then(async()=>{
+    if(!Z.run||Z.run.runId!==R.runId)return;
+    const r=await sb.rpc('saber_save_answers',{p_run:R.runId,p_answers:snapshot});
+    if(r.error)throw r.error;
+    R.serverSaved=snapshot;
+    R.lastSavedAt=r.data?.saved_at||new Date().toISOString();
+  });
+  R.saveChain=task;
+  return task;
+}
+function scheduleServerSave(R){
+  if(!R)return;
+  clearTimeout(R.saveTimer);
+  R.saveTimer=setTimeout(()=>{
+    queueServerAnswers(R).catch(e=>{
+      if(Date.now()<Date.parse(R.expiresAt))toast('⚠️','No se pudo guardar','Revisa tu conexión. La respuesta permanece temporalmente en este dispositivo.');
+    });
+  },450);
+}
 async function start(sid,s){
   const sim=Z.sims.find(x=>x.id===sid);if(!sim)return;
   const its=itemsDe(sid,s).sort((a,b)=>a.orden-b.orden);
@@ -81,9 +103,12 @@ async function start(sid,s){
     const total=Number(started.duration_seconds)||minSesion(sid,s)*60;
     const left=Math.max(0,Number(started.seconds_left)||Math.ceil((Date.parse(started.expires_at)-Date.now())/1000));
     const storeKey='aula360_saber_run_'+started.run_id;
-    let saved={};
-    try{saved=JSON.parse(localStorage.getItem(storeKey)||'{}')}catch(e){saved={}}
-    Z.run={sim,sesion:s,qs,ans:saved&&typeof saved==='object'?saved:{},i:0,total,left,runId:started.run_id,expiresAt:started.expires_at,storeKey,resumed:!!started.resumed,sending:false};
+    let localSaved={};
+    try{localSaved=JSON.parse(localStorage.getItem(storeKey)||'{}')}catch(e){localSaved={}}
+    const serverSaved=started.answers&&typeof started.answers==='object'?started.answers:{};
+    const saved={...(localSaved&&typeof localSaved==='object'?localSaved:{}),...serverSaved};
+    Z.run={sim,sesion:s,qs,ans:saved,i:0,total,left,runId:started.run_id,expiresAt:started.expires_at,storeKey,resumed:!!started.resumed,sending:false,saveChain:Promise.resolve(),serverSaved};
+
     clearInterval(Z.timer);
     Z.timer=setInterval(()=>{
       if(!Z.run){clearInterval(Z.timer);return}
@@ -99,19 +124,31 @@ async function start(sid,s){
 }
 function confirmStart(sid,s){
   const sim=Z.sims.find(x=>x.id===sid),n=itemsDe(sid,s).length;
-  if(confirm('Vas a presentar la Sesión '+s+' ('+n+' preguntas, '+minSesion(sid,s)+' minutos).\n\nEl tiempo empieza ya y no se puede pausar. Si recargas, el reloj seguirá corriendo y podrás reanudar desde el mismo navegador; tus respuestas guardadas en este dispositivo se recuperarán.\n\n¿Empezar?'))start(sid,s)}
+  if(confirm('Vas a presentar la Sesión '+s+' ('+n+' preguntas, '+minSesion(sid,s)+' minutos).\n\nEl tiempo empieza ya y no se puede pausar. Tus respuestas se guardan en el servidor mientras avanzas. Si recargas, el reloj seguirá corriendo y podrás reanudar la sesión con las respuestas ya guardadas.\n\n¿Empezar?'))start(sid,s)}
 async function finish(auto){
   const R=Z.run;if(!R||R.sending)return;
   if(!auto){const sin=R.qs.filter(q=>R.ans[q.id]==null).length;
     if(!confirm(sin?'Te faltan '+sin+' pregunta(s) sin responder. ¿Finalizar la sesión de todos modos?':'¿Finalizar la sesión y calificar?'))return}
-  R.sending=true;clearInterval(Z.timer);
-  const answers=Object.fromEntries(R.qs.map(q=>[q.id,R.ans[q.id]??null]));
-  const r=await sb.rpc('saber_submit',{p_sim:R.sim.id,p_sesion:R.sesion,p_answers:answers,p_seconds:Math.max(0,R.total-R.left),p_auto:!!auto});
-  if(r.error){R.sending=false;return err(r.error)}
-  try{localStorage.removeItem(R.storeKey)}catch(e){}
-  Z.res={...r.data,auto,qs:R.qs,ans:R.ans,sim:R.sim,sesion:R.sesion};Z.run=null;
-  try{await load()}catch(e){}
-  render();window.scrollTo(0,0);
+  R.sending=true;
+  clearTimeout(R.saveTimer);
+  try{
+    if(auto){
+      try{await (R.saveChain||Promise.resolve())}catch(e){}
+    }else{
+      try{await queueServerAnswers(R)}
+      catch(e){
+        if(Date.now()<Date.parse(R.expiresAt)){R.sending=false;return err(e)}
+      }
+    }
+    clearInterval(Z.timer);
+    const answers=Object.fromEntries(R.qs.map(q=>[q.id,R.ans[q.id]??null]));
+    const r=await sb.rpc('saber_submit',{p_sim:R.sim.id,p_sesion:R.sesion,p_answers:answers,p_seconds:Math.max(0,R.total-R.left),p_auto:!!auto});
+    if(r.error){R.sending=false;return err(r.error)}
+    try{localStorage.removeItem(R.storeKey)}catch(e){}
+    Z.res={...r.data,auto:!!r.data?.auto,qs:R.qs,ans:R.ans,sim:R.sim,sesion:R.sesion};Z.run=null;
+    try{await load()}catch(e){}
+    render();window.scrollTo(0,0);
+  }catch(e){R.sending=false;err(e)}
 }
 
 /* ---------- vistas del estudiante ---------- */
@@ -248,7 +285,7 @@ window.SABER={
   load,view,
   ini:confirmStart,
   go(k){if(Z.run){Z.run.i=Math.max(0,Math.min(Z.run.qs.length-1,k));render();window.scrollTo(0,0)}},
-  ans(id,k){if(Z.run){Z.run.ans[id]=k;try{localStorage.setItem(Z.run.storeKey,JSON.stringify(Z.run.ans))}catch(e){}render()}},
+  ans(id,k){if(Z.run){Z.run.ans[id]=k;try{localStorage.setItem(Z.run.storeKey,JSON.stringify(Z.run.ans))}catch(e){}scheduleServerSave(Z.run);render()}},
   fin(){finish(false)},
   cerrar(){Z.res=null;render()},
   f(k,v){Z.f[k]=v},
