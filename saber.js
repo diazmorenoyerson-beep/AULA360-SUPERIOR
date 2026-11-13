@@ -76,12 +76,18 @@ async function start(sid,s){
     for(let i=0;i<ids.length;i+=60){ok(await sb.from('questions').select('id,body,options,image_path,stimulus_title,stimulus_content').in('id',ids.slice(i,i+60))).forEach(q=>{qm[q.id]=q})}
     const qs=full.map(x=>qm[x.question_id]?{...qm[x.question_id],area:x.area}:null).filter(Boolean);
     if(qs.length!==ids.length)return toast('⚠️','Preguntas no disponibles','Faltan preguntas de este simulacro. Avisa a tu docente.');
-    const total=minSesion(sid,s)*60;
-    Z.run={sim,sesion:s,qs,ans:{},i:0,total,left:total,sending:false};
+    const started=ok(await sb.rpc('saber_begin_session',{p_sim:sid,p_sesion:s}));
+    if(!started||!started.run_id||!started.expires_at)throw new Error('El servidor no pudo iniciar el reloj del simulacro.');
+    const total=Number(started.duration_seconds)||minSesion(sid,s)*60;
+    const left=Math.max(0,Number(started.seconds_left)||Math.ceil((Date.parse(started.expires_at)-Date.now())/1000));
+    const storeKey='aula360_saber_run_'+started.run_id;
+    let saved={};
+    try{saved=JSON.parse(localStorage.getItem(storeKey)||'{}')}catch(e){saved={}}
+    Z.run={sim,sesion:s,qs,ans:saved&&typeof saved==='object'?saved:{},i:0,total,left,runId:started.run_id,expiresAt:started.expires_at,storeKey,sending:false};
     clearInterval(Z.timer);
     Z.timer=setInterval(()=>{
       if(!Z.run){clearInterval(Z.timer);return}
-      Z.run.left=Math.max(0,Z.run.left-1);
+      Z.run.left=Math.max(0,Math.ceil((Date.parse(Z.run.expiresAt)-Date.now())/1000));
       if(typeof tab==='undefined'||tab==='saber'){
         const e=document.getElementById('sbclk');
         if(e){e.textContent=mmss(Z.run.left);e.style.color=Z.run.left<300?'#dc2626':'#1d4ed8'}
@@ -102,6 +108,7 @@ async function finish(auto){
   const answers=Object.fromEntries(R.qs.map(q=>[q.id,R.ans[q.id]??null]));
   const r=await sb.rpc('saber_submit',{p_sim:R.sim.id,p_sesion:R.sesion,p_answers:answers,p_seconds:Math.max(0,R.total-R.left),p_auto:!!auto});
   if(r.error){R.sending=false;return err(r.error)}
+  try{localStorage.removeItem(R.storeKey)}catch(e){}
   Z.res={...r.data,auto,qs:R.qs,ans:R.ans,sim:R.sim,sesion:R.sesion};Z.run=null;
   try{await load()}catch(e){}
   render();window.scrollTo(0,0);
@@ -228,7 +235,7 @@ window.SABER={
   load,view,
   ini:confirmStart,
   go(k){if(Z.run){Z.run.i=Math.max(0,Math.min(Z.run.qs.length-1,k));render();window.scrollTo(0,0)}},
-  ans(id,k){if(Z.run){Z.run.ans[id]=k;render()}},
+  ans(id,k){if(Z.run){Z.run.ans[id]=k;try{localStorage.setItem(Z.run.storeKey,JSON.stringify(Z.run.ans))}catch(e){}render()}},
   fin(){finish(false)},
   cerrar(){Z.res=null;render()},
   f(k,v){Z.f[k]=v},
