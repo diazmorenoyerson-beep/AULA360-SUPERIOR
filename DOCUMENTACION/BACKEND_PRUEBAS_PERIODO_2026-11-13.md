@@ -94,3 +94,11 @@ Se reforzó el flujo de simulacros cronometrados:
 Migración: `database/2026-11-13_saber_server_answer_persistence.sql`.
 
 Verificación técnica: la columna existe, las tres RPC tienen permisos autenticados y no permiten ejecución anónima; `saber_submit` usa `run.answers` y no lee las respuestas del payload. La prueba completa con una sesión real de estudiante sigue pendiente porque el banco tiene cero preguntas publicadas y válidas. La persistencia en servidor mejora integridad y recuperación, pero no equivale a una certificación anti-trampas ni sustituye el QA autenticado.
+
+
+## Verificación del código y caché (2026-11-13)
+
+- Se validó sintaxis JavaScript con compilación estática de `saber.js`, `institucional.js`, `periodo.js`, `dashboard.js` y `sw.js`: todos pasan el parseo.
+- Se actualizó la referencia del script Saber 11 a `saber.js?v=2` y la caché del service worker a `aula360-premium-v24` para evitar que el navegador siga usando la versión anterior.
+- `saber_session_runs` mantiene RLS activo y no permite SELECT directo a `anon` ni `authenticated`. Las respuestas solo se consultan/actualizan a través de RPC autenticadas.
+- El estado de Vercel revisado sigue apuntando a un commit anterior a estas modificaciones. No se declara desplegada esta versión ni se comparte una URL como si contuviera los cambios.
