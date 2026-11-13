@@ -12,7 +12,7 @@ async function load(){
   if(isEst()){
     const r=await sb.from('periodo_pruebas').select('id,titulo,asignatura,periodo,minutos,max_intentos,abre,cierra').eq('estado','publicada').order('created_at',{ascending:false});
     if(r.error)throw r.error;Z.lista=r.data||[];
-    const a=await sb.from('periodo_intentos').select('prueba_id,score,correct,total,created_at,automatic').eq('user_id',M.id);
+    const a=await sb.from('periodo_intentos').select('prueba_id,score,correct,total,created_at,automatic').eq('user_id',M.id).not('submitted_at','is',null);
     if(a.error)throw a.error;Z.mios=a.data||[];return;
   }
   const r=await sb.from('periodo_pruebas').select('*,periodo_targets(course_id),periodo_items(count)').order('created_at',{ascending:false});
