@@ -362,11 +362,15 @@ create policy virtual_material_delete
 on storage.objects for delete to authenticated
 using (
   bucket_id = 'virtual-material'
-  and (storage.foldername(name))[1] = (select auth.uid())::text
   and exists (
     select 1 from public.virtual_trabajos t
     where t.id::text = (storage.foldername(name))[2]
-      and t.docente_id = (select auth.uid())
+      and (
+        t.docente_id = (select auth.uid())
+        or (t.colegio_id = (select public.aula360_my_school())
+            and (select public.aula360_my_role()) in ('rector','coordinador'))
+        or (select public.aula360_is_admin())
+      )
   )
 );
 
@@ -604,7 +608,10 @@ revoke all privileges on table public.virtual_trabajos, public.virtual_trabajo_c
   public.virtual_archivos, public.virtual_entregas, public.virtual_descargas
 from anon, authenticated;
 
-grant select, insert, update, delete on public.virtual_trabajos to authenticated;
+grant select, insert, delete on public.virtual_trabajos to authenticated;
+revoke update on table public.virtual_trabajos from authenticated;
+grant update (max_descargas,max_entregas,max_mb,permite_tarde,activo)
+on public.virtual_trabajos to authenticated;
 grant select, insert, delete on public.virtual_trabajo_cursos to authenticated;
 grant select, insert, delete on public.virtual_archivos to authenticated;
 grant select on public.virtual_entregas to authenticated;
