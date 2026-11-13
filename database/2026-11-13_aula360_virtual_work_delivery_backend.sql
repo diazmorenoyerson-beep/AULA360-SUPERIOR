@@ -521,14 +521,14 @@ begin
   end if;
 
   if p_size > v_work.max_mb::bigint * 1048576 then
-    raise exception 'El archivo supera el límite de '||v_work.max_mb||' MB';
+    raise exception using message = 'El archivo supera el límite de ' || v_work.max_mb::text || ' MB';
   end if;
 
   v_match := regexp_match(lower(btrim(p_nombre)), '\.([a-z0-9]{1,10})$');
   if v_match is null then raise exception 'El archivo debe tener una extensión permitida'; end if;
   v_ext := v_match[1];
   if not (v_ext = any(v_work.tipos_permitidos)) then
-    raise exception 'El tipo de archivo .'||v_ext||' no está permitido';
+    raise exception using message = 'El tipo de archivo .' || v_ext || ' no está permitido';
   end if;
 
   select count(*) into v_count
