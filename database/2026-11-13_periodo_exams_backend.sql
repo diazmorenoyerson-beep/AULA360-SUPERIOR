@@ -108,7 +108,7 @@ create policy periodo_targets_manage_teacher on public.periodo_targets for all t
  exists(select 1 from public.periodo_pruebas p where p.id=prueba_id and p.teacher_id=auth.uid() and p.estado='borrador')
 ) with check (
  exists(select 1 from public.periodo_pruebas p where p.id=prueba_id and p.teacher_id=auth.uid() and p.estado='borrador')
- and exists(select 1 from public.courses c join public.periodo_pruebas p on p.id=prueba_id where c.id=course_id and c.grade=p.grado and (c.teacher_id=p.teacher_id or (c.colegio_id=p.colegio_id and p.colegio_id is not null)))
+ and exists(select 1 from public.courses c join public.periodo_pruebas p on p.id=prueba_id where c.id=course_id and c.grade=p.grado and (c.teacher_id=p.teacher_id or (public.aula360_my_role() in ('rector','coordinador') and c.colegio_id=p.colegio_id and p.colegio_id is not null)))
 );
 
 drop policy if exists periodo_attempts_read_scope on public.periodo_intentos;
