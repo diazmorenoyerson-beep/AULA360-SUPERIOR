@@ -12,8 +12,8 @@ async function load(){
   if(isEst()){
     const r=await sb.from('periodo_pruebas').select('id,titulo,asignatura,periodo,minutos,max_intentos,abre,cierra').eq('estado','publicada').order('created_at',{ascending:false});
     if(r.error)throw r.error;Z.lista=r.data||[];
-    const a=await sb.from('periodo_intentos').select('prueba_id,score,correct,total,created_at').eq('user_id',M.id);
-    Z.mios=a.data||[];return;
+    const a=await sb.from('periodo_intentos').select('prueba_id,score,correct,total,created_at,automatic').eq('user_id',M.id).not('submitted_at','is',null);
+    if(a.error)throw a.error;Z.mios=a.data||[];return;
   }
   const r=await sb.from('periodo_pruebas').select('*,periodo_targets(course_id),periodo_items(count)').order('created_at',{ascending:false});
   if(r.error)throw r.error;Z.lista=r.data||[];
@@ -48,12 +48,21 @@ async function guardar(publicar){
   const v=validar();if(v)return toast('⚠️','Falta algo',v);
   if(publicar&&!Z.f.cursos.length)return toast('⚠️','Elige los cursos','Marca los cursos que la presentarán.');
   const f=Z.f,qs=seleccionadas();
-  const r=await sb.from('periodo_pruebas').insert({titulo:f.titulo.trim(),asignatura:f.asig,grado:11,periodo:+f.periodo,minutos:+f.min,max_intentos:+f.intentos,abre:f.abre?new Date(f.abre).toISOString():null,cierra:f.cierra?new Date(f.cierra).toISOString():null,estado:publicar?'publicada':'borrador'}).select('id').single();
+  // El grado se deriva del banco real y se contrasta con los cursos; nunca se fija artificialmente en 11.
+  const qr=await sb.from('questions').select('id,grade').in('id',qs.map(q=>q.id));
+  if(qr.error)return err(qr.error);
+  const gradosPreguntas=[...new Set((qr.data||[]).map(q=>Number(q.grade)).filter(Number.isFinite))];
+  if(gradosPreguntas.length!==1)return toast('⚠️','Grados incompatibles','Selecciona preguntas de un solo grado para esta prueba.');
+  const grado=gradosPreguntas[0];
+  const cursosSel=(D.courses||[]).filter(c=>f.cursos.includes(c.id));
+  if(publicar&&cursosSel.some(c=>Number(c.grade)!==grado))return toast('⚠️','El grado no coincide','Las preguntas seleccionadas son de '+grado+'°. Elige cursos del mismo grado.');
+  const r=await sb.from('periodo_pruebas').insert({titulo:f.titulo.trim(),asignatura:f.asig,grado,periodo:+f.periodo,minutos:+f.min,max_intentos:+f.intentos,abre:f.abre?new Date(f.abre).toISOString():null,cierra:f.cierra?new Date(f.cierra).toISOString():null,estado:'borrador'}).select('id').single();
   if(r.error)return err(r.error);
   const id=r.data.id;
   const it=await sb.from('periodo_items').insert(qs.map((q,i)=>({prueba_id:id,pos:i+1,question_id:q.id})));
   if(it.error){await sb.from('periodo_pruebas').delete().eq('id',id);return err(it.error)}
-  if(f.cursos.length){const t=await sb.from('periodo_targets').insert(f.cursos.map(c=>({prueba_id:id,course_id:c})));if(t.error)return err(t.error)}
+  if(f.cursos.length){const t=await sb.from('periodo_targets').insert(f.cursos.map(c=>({prueba_id:id,course_id:c})));if(t.error){await sb.from('periodo_pruebas').delete().eq('id',id);return err(t.error)}}
+  if(publicar){const pub=await sb.from('periodo_pruebas').update({estado:'publicada'}).eq('id',id);if(pub.error)return err(pub.error)}
   toast('✅',publicar?'Prueba publicada':'Borrador guardado',f.titulo);
   Z.f=nuevoF();Z.banco=[];Z.sel=new Set();await load();rerender();
 }
@@ -109,20 +118,33 @@ function viewDoc(){
     ${grupos.map(g=>`<div style="border:1px solid #e2e8f0;border-radius:12px;padding:8px">${g.k?`<div style="background:#f8fafc;border-radius:8px;padding:8px;font-size:13px;margin-bottom:6px"><b>${e(g.items[0].stimulus_title||'Contexto compartido')}</b> <button class="aic-link" onclick="PER.grupo('${g.k}')">☑ Marcar todo el grupo (${g.items.length})</button><div style="white-space:pre-wrap;color:#475569;margin-top:4px">${e(g.items[0].stimulus_content)}</div></div>`:''}
       ${g.items.map(x=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:4px 2px;font-size:13px;cursor:pointer"><input type="checkbox" ${Z.sel.has(x.id)?'checked':''} onchange="PER.marca('${x.id}',this.checked)"><span>${x.image_path?`<img src="${IM()}${encodeURI(x.image_path)}" style="max-width:340px;max-height:140px;object-fit:contain;display:block">`:e(x.body)}${x.difficulty?` <small style="color:#64748b">(${x.difficulty})</small>`:''}</span></label>`).join('')}</div>`).join('')||'<p style="color:#64748b;font-size:13px">No hay preguntas para esta asignatura.</p>'}</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
-     <button onclick="PER.previa()" style="padding:10px 16px;border-radius:10px;background:#4f46e5;color:#fff;font-weight:700;border:0">👁 Vista previa</button>
+     <button class="aic-btn-3d" onclick="PER.previa()" style="padding:10px 16px;border-radius:10px;background:#4f46e5;color:#fff;font-weight:700;border:0">👁 Vista previa</button>
      <button onclick="PER.guardar(false)" style="padding:10px 16px;border-radius:10px;background:#e2e8f0;font-weight:700;border:0">💾 Guardar borrador</button>
-     ${virt?`<button onclick="PER.guardar(true)" style="padding:10px 16px;border-radius:10px;background:#059669;color:#fff;font-weight:700;border:0">✅ Guardar y publicar</button>`:`<button onclick="PER.previa()" style="padding:10px 16px;border-radius:10px;background:#059669;color:#fff;font-weight:700;border:0">🖨️ Imprimir esta prueba</button>`}</div></div>`:''}
+     ${virt?`<button class="aic-btn-3d" onclick="PER.guardar(true)" style="padding:10px 16px;border-radius:10px;background:#059669;color:#fff;font-weight:700;border:0">✅ Guardar y publicar</button>`:`<button class="aic-btn-3d" onclick="PER.previa()" style="padding:10px 16px;border-radius:10px;background:#059669;color:#fff;font-weight:700;border:0">🖨️ Imprimir esta prueba</button>`}</div></div>`:''}
   <div class="aic-card" style="padding:18px"><h3 style="font-weight:800;margin-bottom:10px">Mis pruebas</h3>${lista}</div></div>`;
 }
 function detHtml(){
-  const d=Z.det;if(!d.rows)return'<p style="font-size:13px">Cargando…</p>';
-  return`<div class="aic-table-wrap" style="margin-top:10px"><table><thead><tr><th>ESTUDIANTE</th><th>ACIERTOS</th><th>NOTA /100</th><th>FECHA</th></tr></thead><tbody>${d.rows.map(r=>`<tr><td>${e(r.profiles?.full_name||'')}</td><td>${r.correct}/${r.total}</td><td><b>${r.score}</b></td><td>${fmtF(r.created_at)}</td></tr>`).join('')||'<tr><td colspan="4">Nadie la ha presentado.</td></tr>'}</tbody></table></div>`;
+  const d=Z.det;if(!d.report)return'<p style="font-size:13px">Cargando informe académico…</p>';
+  const r=d.report,p=r.prueba||{},courses=r.cursos||[],students=r.estudiantes||[];
+  const pct=(a,b)=>b?Math.round(a*100/b):0;
+  return`<div style="margin-top:12px;display:grid;gap:12px">
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
+    <div class="aic-card" style="padding:12px"><small>Preguntas</small><div style="font-size:23px;font-weight:900">${r.total_preguntas||0}</div></div>
+    <div class="aic-card" style="padding:12px"><small>Intentos entregados</small><div style="font-size:23px;font-weight:900">${r.total_intentos||0}</div></div>
+    <div class="aic-card" style="padding:12px"><small>Cursos asignados</small><div style="font-size:23px;font-weight:900">${courses.length}</div></div>
+    <div class="aic-card" style="padding:12px"><small>Estudiantes asignados</small><div style="font-size:23px;font-weight:900">${students.length}</div></div>
+   </div>
+   <div><b>Participación y resultados por curso</b><div class="aic-table-wrap"><table><thead><tr><th>CURSO</th><th>MATRICULADOS</th><th>PRESENTARON</th><th>PARTICIPACIÓN</th><th>INTENTOS</th><th>PROMEDIO /100</th></tr></thead><tbody>${courses.map(x=>`<tr><td>${e(x.grado)}° ${e(x.curso)}</td><td>${x.matriculados}</td><td>${x.presentaron}</td><td><b>${pct(x.presentaron,x.matriculados)}%</b></td><td>${x.intentos}</td><td>${x.promedio==null?'—':x.promedio}</td></tr>`).join('')||'<tr><td colspan="6">Sin cursos asignados.</td></tr>'}</tbody></table></div></div>
+   <div><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b>Seguimiento individual</b><button class="aic-link" onclick="PER.exportar('${d.id}')">⬇ Exportar CSV</button></div>
+    <div class="aic-table-wrap"><table><thead><tr><th>ESTUDIANTE</th><th>CURSO</th><th>INTENTOS</th><th>MEJOR NOTA</th><th>ÚLTIMA NOTA</th><th>ÚLTIMA ENTREGA</th><th>TIPO</th></tr></thead><tbody>${students.map(x=>`<tr><td>${e(x.nombre||'')}</td><td>${e(x.grado)}° ${e(x.curso)}</td><td>${x.intentos}</td><td>${x.mejor_nota??'—'}</td><td><b>${x.ultima_nota??'—'}</b></td><td>${fmtF(x.ultimo_envio)}</td><td>${x.entrega_automatica?'Automática':x.intentos?'Entregada':'Pendiente'}</td></tr>`).join('')||'<tr><td colspan="7">No hay estudiantes matriculados en los cursos asignados.</td></tr>'}</tbody></table></div>
+   </div>
+  </div>`;
 }
 /* ---------- vista estudiante ---------- */
 function viewEst(){
   if(Z.res){const r=Z.res;return`<div class="aic-card" style="padding:20px"><h2 style="font-weight:800;font-size:20px">Resultado: ${e(r.titulo)}</h2><p style="font-size:34px;font-weight:900;color:#4f46e5">${r.score} <small style="font-size:14px;color:#64748b">/ 100 · ${r.correct} de ${r.total}</small></p>
    ${r.qs.map((q,i)=>{const c=r.key[q.id],ok=r.ans[q.id]===c;return`<div style="padding:10px;border-radius:10px;margin:8px 0;background:${ok?'#ecfdf5':'#fff1f2'};font-size:13px"><b>${i+1}.</b> ${q.image_path?`<img src="${IM()}${encodeURI(q.image_path)}" style="max-width:100%">`:e(q.body)}<div>Correcta: <b>${'ABCD'[c]??'—'}</b> · Tu respuesta: <b>${r.ans[q.id]==null?'—':'ABCD'[r.ans[q.id]]}</b></div>${r.exp[q.id]?`<div style="color:#475569">💡 ${e(r.exp[q.id])}</div>`:''}</div>`}).join('')}
-   <button onclick="PER.volver()" style="padding:10px 16px;border-radius:10px;background:#4f46e5;color:#fff;border:0;font-weight:700">Volver</button></div>`}
+   <button class="aic-btn-3d" onclick="PER.volver()" style="padding:10px 16px;border-radius:10px;background:#4f46e5;color:#fff;border:0;font-weight:700">Volver</button></div>`}
   const R=Z.R;
   if(R){
     const q=R.qs[R.i],prev=R.qs[R.i-1],nuevoCtx=q.stimulus_content&&!(prev&&prev.grupo_key&&prev.grupo_key===q.grupo_key);
@@ -132,10 +154,10 @@ function viewEst(){
     <div style="display:flex;flex-wrap:wrap;gap:4px;margin:10px 0">${R.qs.map((x,k)=>`<button onclick="PER.ir(${k})" style="width:32px;height:32px;border-radius:8px;border:2px solid ${k===R.i?'#1d4ed8':'transparent'};background:${R.ans[x.id]!=null?'#2864e8':'#e2e8f0'};color:${R.ans[x.id]!=null?'#fff':'#334155'};font-weight:700;font-size:12px">${k+1}</button>`).join('')}</div>
     ${ctx}${q.image_path?`<img src="${IM()}${encodeURI(q.image_path)}" style="max-width:100%;display:block;margin:0 auto 10px">`:`<p style="font-weight:600;margin-bottom:10px">${e(q.body)}</p>`}
     <div style="display:grid;gap:8px">${(q.options||[]).map((o,k)=>`<button onclick="PER.resp('${q.id}',${k})" style="text-align:left;padding:12px;border-radius:12px;border:2px solid ${R.ans[q.id]===k?'#2864e8':'#e2e8f0'};background:${R.ans[q.id]===k?'#eff6ff':'#fff'}"><b>${'ABCD'[k]}.</b> ${q.image_path&&/^[A-D]$/.test(o)?'':e(o)}</button>`).join('')}</div>
-    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px"><button ${R.i?'':'disabled'} onclick="PER.ir(${R.i-1})" style="padding:8px 14px;border-radius:10px;background:#e2e8f0;border:0">← Anterior</button><button onclick="PER.fin()" style="padding:8px 14px;border-radius:10px;background:#059669;color:#fff;border:0;font-weight:700">Entregar</button><button ${R.i<R.qs.length-1?'':'disabled'} onclick="PER.ir(${R.i+1})" style="padding:8px 14px;border-radius:10px;background:#4f46e5;color:#fff;border:0">Siguiente →</button></div></div>`;
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px"><button ${R.i?'':'disabled'} onclick="PER.ir(${R.i-1})" style="padding:8px 14px;border-radius:10px;background:#e2e8f0;border:0">← Anterior</button><button class="aic-btn-3d" onclick="PER.fin()" style="padding:8px 14px;border-radius:10px;background:#059669;color:#fff;border:0;font-weight:700">Entregar</button><button class="aic-btn-3d" ${R.i<R.qs.length-1?'':'disabled'} onclick="PER.ir(${R.i+1})" style="padding:8px 14px;border-radius:10px;background:#4f46e5;color:#fff;border:0">Siguiente →</button></div></div>`;
   }
   const rows=Z.lista.map(p=>{const m=(Z.mios||[]).filter(x=>x.prueba_id===p.id),usados=m.length;
-    return`<div class="aic-card" style="padding:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center"><div><b>${e(p.titulo)}</b><div style="font-size:12px;color:#64748b">${e(p.asignatura)} · Periodo ${p.periodo} · ${p.minutos} min · cierra ${fmtF(p.cierra)}${m.length?` · mejor nota ${Math.max(...m.map(x=>+x.score))}`:''}</div></div>
+    return`<div class="aic-card" style="padding:14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center"><div><b>${e(p.titulo)}</b><div style="font-size:12px;color:#64748b">${e(p.asignatura)} · Periodo ${p.periodo} · ${p.minutos} min · cierra ${fmtF(p.cierra)}${m.length?` · ${m.length} intento(s) · mejor nota ${Math.max(...m.map(x=>+x.score))}${m.some(x=>x.automatic)?' · incluye entrega automática':''}`:''}</div></div>
     <button ${usados>=p.max_intentos?'disabled':''} onclick="PER.empezar('${p.id}')" style="padding:9px 16px;border-radius:10px;background:#4f46e5;color:#fff;border:0;font-weight:700;opacity:${usados>=p.max_intentos?.4:1}">${usados>=p.max_intentos?'Intentos agotados':'▶ Presentar'}</button></div>`}).join('')||'<p style="color:#64748b">Tu docente aún no ha publicado exámenes.</p>';
   return`<div><h2 style="font-weight:800;font-size:20px;margin-bottom:10px">🧾 Mis exámenes virtuales</h2>${rows}</div>`;
 }
@@ -157,23 +179,36 @@ const api={
   async resultados(id){
     if(Z.det&&Z.det.id===id){Z.det=null;return rerender()}
     Z.det={id};rerender();
-    const r=await sb.from('periodo_intentos').select('correct,total,score,created_at,profiles(full_name)').eq('prueba_id',id).order('created_at',{ascending:false});
-    Z.det={id,rows:r.data||[]};rerender();
+    const r=await sb.rpc('periodo_reporte',{p_prueba:id});
+    if(r.error){Z.det=null;rerender();return err(r.error)}
+    Z.det={id,report:r.data};rerender();
+  },
+  exportar(id){
+    const d=Z.det;if(!d||d.id!==id||!d.report)return;
+    const rows=[['Estudiante','Curso','Grado','Intentos','Mejor nota','Última nota','Última entrega','Tipo de entrega']];
+    (d.report.estudiantes||[]).forEach(x=>rows.push([x.nombre,x.curso,x.grado,x.intentos,x.mejor_nota??'',x.ultima_nota??'',x.ultimo_envio??'',x.entrega_automatica?'Automática':x.intentos?'Entregada':'Pendiente']));
+    const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='informe-prueba-periodo-'+id+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
   },
   async empezar(id){
     const r=await sb.rpc('periodo_preguntas',{p_prueba:id});if(r.error)return err(r.error);
     const p=r.data.prueba,qs=r.data.preguntas;
-    Z.R={p:{id:p.id,titulo:p.titulo},qs,ans:{},i:0,total:p.minutos*60,left:p.minutos*60,sending:false};
+    const left=Math.max(0,Math.ceil((Date.parse(p.expires_at)-Date.now())/1000));
+    Z.saveChain=Promise.resolve();
+    Z.R={p:{id:p.id,titulo:p.titulo},qs,ans:p.answers||{},i:0,total:p.minutos*60,left,sending:false,expiresAt:p.expires_at};
     clearInterval(Z.timer);
-    Z.timer=setInterval(()=>{if(!Z.R)return clearInterval(Z.timer);Z.R.left--;const c=document.getElementById('perclk');if(c){c.textContent=Math.floor(Z.R.left/60)+':'+String(Z.R.left%60).padStart(2,'0')}if(Z.R.left<=0)api.fin(true)},1000);
+    Z.timer=setInterval(()=>{if(!Z.R)return clearInterval(Z.timer);Z.R.left=Math.max(0,Math.ceil((Date.parse(Z.R.expiresAt)-Date.now())/1000));const c=document.getElementById('perclk');if(c){c.textContent=Math.floor(Z.R.left/60)+':'+String(Z.R.left%60).padStart(2,'0')}if(Z.R.left<=0)api.fin(true)},1000);
+    if(left<=0)api.fin(true);
     rerender();
   },
   ir(k){Z.R.i=k;rerender()},
-  resp(id,k){Z.R.ans[id]=k;rerender()},
+  resp(id,k){Z.R.ans[id]=k;const rid=Z.R.p.id,answers={...Z.R.ans};Z.saveChain=(Z.saveChain||Promise.resolve()).then(()=>sb.rpc('periodo_guardar_respuestas',{p_prueba:rid,p_answers:answers})).then(r=>{if(r.error&&Z.R&&Z.R.p.id===rid)err(r.error)});rerender()},
   async fin(auto){
     const R=Z.R;if(!R||R.sending)return;
     if(!auto){const sin=R.qs.filter(q=>R.ans[q.id]==null).length;if(!confirm(sin?`Te faltan ${sin} pregunta(s) sin responder. ¿Entregar de todas formas?`:'¿Entregar el examen?'))return}
     R.sending=true;clearInterval(Z.timer);
+    if(Z.saveChain)await Z.saveChain;
     const a=Object.fromEntries(R.qs.map(q=>[q.id,R.ans[q.id]??null]));
     const r=await sb.rpc('periodo_enviar',{p_prueba:R.p.id,p_answers:a,p_seconds:R.total-Math.max(0,R.left)});
     if(r.error){R.sending=false;return err(r.error)}

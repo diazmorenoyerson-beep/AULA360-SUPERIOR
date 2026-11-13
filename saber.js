@@ -12,7 +12,7 @@ const PESO={'Lectura Crítica':3,'Matemáticas':3,'Sociales y Ciudadanas':3,'Cie
 const OFI={1:{'Matemáticas':25,'Lectura Crítica':41,'Sociales y Ciudadanas':25,'Ciencias Naturales':29},
            2:{'Sociales y Ciudadanas':25,'Matemáticas':25,'Ciencias Naturales':29,'Inglés':55}};
 const OFI_TOT={1:120,2:134},SES_MIN=270;
-const FUENTE={'Matemáticas':['Matemáticas'],'Lectura Crítica':['Lectura Crítica'],'Sociales y Ciudadanas':['Sociales y Ciudadanas','Ciencias Sociales','Sociales'],'Ciencias Naturales':['Ciencias Naturales'],'Inglés':['Inglés']};
+const FUENTE={'Matemáticas':['Matemáticas'],'Lectura Crítica':['Lectura Crítica'],'Sociales y Ciudadanas':['Sociales y Ciudadanas','Ciencias Sociales','Sociales'],'Ciencias Naturales':['Ciencias Naturales','Biología','Química','Física'],'Inglés':['Inglés']};
 const LET='ABCDEFG';
 const Z={sims:[],items:[],targets:[],att:[],disp:[],names:{},res:null,run:null,ver:null,f:{t:'',d:'',m:'completo',c:[],due:'',n:1},loaded:false};
 const esc=s=>(typeof E==='function'?E(s):String(s??''));
@@ -67,6 +67,28 @@ async function todos(mk){let out=[],d=0;for(;;){const r=await mk().range(d,d+999
 async function refresh(){try{await load()}catch(e){err(e)}render()}
 
 /* ---------- estudiante: presentar una sesión ---------- */
+function queueServerAnswers(R){
+  if(!R||!Z.run||Z.run.runId!==R.runId)return Promise.reject(new Error('La sesión ya no está activa.'));
+  const snapshot={...R.ans};
+  const task=(R.saveChain||Promise.resolve()).catch(()=>{}).then(async()=>{
+    if(!Z.run||Z.run.runId!==R.runId)return;
+    const r=await sb.rpc('saber_save_answers',{p_run:R.runId,p_answers:snapshot});
+    if(r.error)throw r.error;
+    R.serverSaved=snapshot;
+    R.lastSavedAt=r.data?.saved_at||new Date().toISOString();
+  });
+  R.saveChain=task;
+  return task;
+}
+function scheduleServerSave(R){
+  if(!R)return;
+  clearTimeout(R.saveTimer);
+  R.saveTimer=setTimeout(()=>{
+    queueServerAnswers(R).catch(e=>{
+      if(Date.now()<Date.parse(R.expiresAt))toast('⚠️','No se pudo guardar','Revisa tu conexión. La respuesta permanece temporalmente en este dispositivo.');
+    });
+  },450);
+}
 async function start(sid,s){
   const sim=Z.sims.find(x=>x.id===sid);if(!sim)return;
   const its=itemsDe(sid,s).sort((a,b)=>a.orden-b.orden);
@@ -76,12 +98,22 @@ async function start(sid,s){
     for(let i=0;i<ids.length;i+=60){ok(await sb.from('questions').select('id,body,options,image_path,stimulus_title,stimulus_content').in('id',ids.slice(i,i+60))).forEach(q=>{qm[q.id]=q})}
     const qs=full.map(x=>qm[x.question_id]?{...qm[x.question_id],area:x.area}:null).filter(Boolean);
     if(qs.length!==ids.length)return toast('⚠️','Preguntas no disponibles','Faltan preguntas de este simulacro. Avisa a tu docente.');
-    const total=minSesion(sid,s)*60;
-    Z.run={sim,sesion:s,qs,ans:{},i:0,total,left:total,sending:false};
+    const started=ok(await sb.rpc('saber_begin_session',{p_sim:sid,p_sesion:s}));
+    if(!started||!started.run_id||!started.expires_at)throw new Error('El servidor no pudo iniciar el reloj del simulacro.');
+    const total=Number(started.duration_seconds)||minSesion(sid,s)*60;
+    const left=Math.max(0,Number(started.seconds_left)||Math.ceil((Date.parse(started.expires_at)-Date.now())/1000));
+    const storeKey='aula360_saber_run_'+started.run_id;
+    let localSaved={};
+    try{localSaved=JSON.parse(localStorage.getItem(storeKey)||'{}')}catch(e){localSaved={}}
+    const serverSaved=started.answers&&typeof started.answers==='object'?started.answers:{};
+    const saved={...(localSaved&&typeof localSaved==='object'?localSaved:{}),...serverSaved};
+    Z.run={sim,sesion:s,qs,ans:saved,i:0,total,left,runId:started.run_id,expiresAt:started.expires_at,storeKey,resumed:!!started.resumed,sending:false,saveChain:Promise.resolve(),serverSaved};
+    if(Object.keys(saved).length&&JSON.stringify(saved)!==JSON.stringify(serverSaved))scheduleServerSave(Z.run);
+
     clearInterval(Z.timer);
     Z.timer=setInterval(()=>{
       if(!Z.run){clearInterval(Z.timer);return}
-      Z.run.left=Math.max(0,Z.run.left-1);
+      Z.run.left=Math.max(0,Math.ceil((Date.parse(Z.run.expiresAt)-Date.now())/1000));
       if(typeof tab==='undefined'||tab==='saber'){
         const e=document.getElementById('sbclk');
         if(e){e.textContent=mmss(Z.run.left);e.style.color=Z.run.left<300?'#dc2626':'#1d4ed8'}
@@ -93,18 +125,32 @@ async function start(sid,s){
 }
 function confirmStart(sid,s){
   const sim=Z.sims.find(x=>x.id===sid),n=itemsDe(sid,s).length;
-  if(confirm('Vas a presentar la Sesión '+s+' ('+n+' preguntas, '+minSesion(sid,s)+' minutos).\n\nEl tiempo empieza ya y no se puede pausar. No cierres ni recargues la página.\n\n¿Empezar?'))start(sid,s)}
+  if(confirm('Vas a presentar la Sesión '+s+' ('+n+' preguntas, '+minSesion(sid,s)+' minutos).\n\nEl tiempo empieza ya y no se puede pausar. Tus respuestas se guardan en el servidor mientras avanzas. Si recargas, el reloj seguirá corriendo y podrás reanudar la sesión con las respuestas ya guardadas.\n\n¿Empezar?'))start(sid,s)}
 async function finish(auto){
   const R=Z.run;if(!R||R.sending)return;
   if(!auto){const sin=R.qs.filter(q=>R.ans[q.id]==null).length;
     if(!confirm(sin?'Te faltan '+sin+' pregunta(s) sin responder. ¿Finalizar la sesión de todos modos?':'¿Finalizar la sesión y calificar?'))return}
-  R.sending=true;clearInterval(Z.timer);
-  const answers=Object.fromEntries(R.qs.map(q=>[q.id,R.ans[q.id]??null]));
-  const r=await sb.rpc('saber_submit',{p_sim:R.sim.id,p_sesion:R.sesion,p_answers:answers,p_seconds:Math.max(0,R.total-R.left),p_auto:!!auto});
-  if(r.error){R.sending=false;return err(r.error)}
-  Z.res={...r.data,auto,qs:R.qs,ans:R.ans,sim:R.sim,sesion:R.sesion};Z.run=null;
-  try{await load()}catch(e){}
-  render();window.scrollTo(0,0);
+  R.sending=true;
+  clearTimeout(R.saveTimer);
+  try{
+    if(auto){
+      try{await queueServerAnswers(R)}catch(e){}
+      try{await (R.saveChain||Promise.resolve())}catch(e){}
+    }else{
+      try{await queueServerAnswers(R)}
+      catch(e){
+        if(Date.now()<Date.parse(R.expiresAt)){R.sending=false;return err(e)}
+      }
+    }
+    clearInterval(Z.timer);
+    const answers=Object.fromEntries(R.qs.map(q=>[q.id,R.ans[q.id]??null]));
+    const r=await sb.rpc('saber_submit',{p_sim:R.sim.id,p_sesion:R.sesion,p_answers:answers,p_seconds:Math.max(0,R.total-R.left),p_auto:!!auto});
+    if(r.error){R.sending=false;return err(r.error)}
+    try{localStorage.removeItem(R.storeKey)}catch(e){}
+    Z.res={...r.data,auto:!!r.data?.auto,qs:R.qs,ans:R.ans,sim:R.sim,sesion:R.sesion};Z.run=null;
+    try{await load()}catch(e){}
+    render();window.scrollTo(0,0);
+  }catch(e){R.sending=false;err(e)}
 }
 
 /* ---------- vistas del estudiante ---------- */
@@ -112,7 +158,7 @@ function vQuiz(){
   const R=Z.run,q=R.qs[R.i],im=!!q.image_path;
   const pal=R.qs.map((x,k)=>{const a=R.ans[x.id]!=null,cur=k===R.i;return`<button type="button" aria-label="Ir a la pregunta ${k+1}${a?', respondida':', sin responder'}" aria-current="${cur?'step':'false'}" onclick="SABER.go(${k})" class="sb-qnav ${a?'is-answered':''} ${cur?'is-current':''}">${k+1}</button>`}).join('');
   const hecho=Object.values(R.ans).filter(v=>v!=null).length;
-  return`<div class="space-y-3"><div class="aic-card"><div class="flex flex-wrap justify-between items-center gap-3"><div><div class="text-xs text-slate-500">${esc(R.sim.title)} · Sesión ${R.sesion}</div><div class="font-semibold">${esc(q.area)} · Pregunta ${R.i+1} de ${R.qs.length}</div><div class="text-xs text-slate-500">${hecho} respondidas</div></div><div class="text-right"><div class="text-xs text-slate-500">Tiempo restante</div><div id="sbclk" style="font-family:monospace;font-size:1.6rem;font-weight:800;color:${R.left<300?'#dc2626':'#1d4ed8'}">${mmss(R.left)}</div></div></div>
+  return`<div class="space-y-3"><div class="aic-card"><div class="flex flex-wrap justify-between items-center gap-3"><div><div class="text-xs text-slate-500">${esc(R.sim.title)} · Sesión ${R.sesion}${R.resumed?' · Sesión reanudada':''}</div><div class="font-semibold">${esc(q.area)} · Pregunta ${R.i+1} de ${R.qs.length}</div><div class="text-xs text-slate-500">${hecho} respondidas</div></div><div class="text-right"><div class="text-xs text-slate-500">Tiempo restante</div><div id="sbclk" style="font-family:monospace;font-size:1.6rem;font-weight:800;color:${R.left<300?'#dc2626':'#1d4ed8'}">${mmss(R.left)}</div></div></div>
   <div class="h-2 bg-slate-200 rounded" style="margin-top:.6rem"><div class="h-2 rounded" style="background:#2864e8;width:${Math.max(0,R.left/R.total*100)}%"></div></div></div>
   <div class="aic-card space-y-4">${vQBody(q,true)}
     <div style="${im?'display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem':'display:grid;gap:.5rem'}">${q.options.map((o,k)=>`<button type="button" onclick="SABER.ans('${q.id}',${k})" aria-pressed="${R.ans[q.id]===k}" class="sb-answer ${R.ans[q.id]===k?'is-selected':''}" style="text-align:${im?'center':'left'}"><b>${LET[k]}${im?'':'.'}</b>${im?'':' '+esc(o)}</button>`).join('')}</div>
@@ -146,9 +192,17 @@ function vEst(){
         ${puede?`<button onclick="SABER.ini('${s.id}',${n})" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm">${usados?'Intentar de nuevo':'Presentar'}</button>`:`<span class="text-xs text-slate-500">${exp?'Cerrado':left<=0?'✅ Presentada':'No disponible'}</span>`}</div>
         <div class="flex flex-wrap gap-1.5 mt-2" style="gap:6px">${Object.entries(pa).map(([a,c])=>`<span style="font-size:11px;background:#e8efff;color:#1d4ed8;border-radius:99px;padding:2px 9px;font-weight:600">${a}: ${c}</span>`).join('')}</div></div>`}).join('');
     const res=cb.ses.length?`<div class="mt-3"><div class="text-sm font-semibold mb-1">Tus resultados</div><div class="flex flex-wrap gap-2">${AREAS.filter(a=>cb.areas[a]).map(a=>`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:8px 12px;text-align:center"><div class="text-xs text-slate-500">${a}</div><div style="font-size:1.2rem;font-weight:800;color:#102a5c">${pct(cb.areas[a].c,cb.areas[a].t)}</div></div>`).join('')}${cb.global!=null?`<div style="background:linear-gradient(135deg,#2864e8,#1749b8);color:#fff;border-radius:12px;padding:8px 14px;text-align:center"><div class="text-xs" style="opacity:.85">Global estimado${cb.ses.length<ses.length?' (parcial)':''}</div><div style="font-size:1.4rem;font-weight:900">${cb.global}<small style="font-size:.7rem;opacity:.8">/500</small></div></div>`:''}</div></div>`:'';
+    const historial=mine.slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+    const evolucion=[1,2].filter(n=>ses.includes(n)).map(n=>{
+      const hs=historial.filter(a=>a.sesion===n);
+      if(!hs.length)return '';
+      const first=hs[0],last=hs[hs.length-1],delta=last.total?pct(last.correct,last.total)-pct(first.correct,first.total):0;
+      return `<div class="flex flex-wrap justify-between gap-2 text-xs py-1 border-b" style="border-color:#e2e8f0"><span>Sesión ${n}: ${hs.length} intento(s) · último ${last.total?pct(last.correct,last.total):0}/100</span><b style="color:${delta>0?'#168052':delta<0?'#b45309':'#64748b'}">${hs.length>1?(delta>0?'+':'')+delta+' puntos desde el primero':'Primer intento'}</b></div>`;
+    }).join('');
+    const historialHtml=historial.length?`<details class="mt-3 rounded-xl p-3" style="background:#f8fafd;border:1px solid #e2e8f0"><summary class="cursor-pointer text-sm font-semibold">Historial y evolución · ${historial.length} intento(s)</summary><div class="mt-2">${evolucion}<div class="aic-table-wrap mt-2"><table class="w-full text-xs text-left"><thead><tr><th>Fecha</th><th>Sesión</th><th>Resultado</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>${historial.slice().reverse().map(a=>`<tr class="border-t"><td class="py-2">${fdate(a.created_at)}</td><td>${a.sesion}</td><td><b>${a.correct}/${a.total} · ${a.total?pct(a.correct,a.total):0}%</b></td><td>${mmss(a.seconds_used||0)}</td><td>${a.auto?'Automático':'Entregado'}</td></tr>`).join('')}</tbody></table></div></div></details>`:'';
     return`<div class="aic-card space-y-3"><div><div class="font-bold" style="color:#102a5c;font-size:1.05rem">🎯 ${esc(s.title)}</div>${s.due_at?`<div class="text-xs ${exp?'text-red-600':'text-slate-500'}">${exp?'⛔ Venció el ':'Fecha límite: '}${fdate(s.due_at)}</div>`:''}${s.description?`<div class="text-sm text-slate-600" style="white-space:pre-wrap">${esc(s.description)}</div>`:''}
-      ${falta.length?`<div class="text-xs" style="color:#b45309">Simulacro parcial: todavía no están todas las preguntas oficiales de ${[...new Set(falta.map(x=>x.area))].join(', ')}.</div>`:''}</div><div class="grid sm:grid-cols-2 gap-3">${bloques}</div>${res}</div>`}).join('');
-  return`<div class="space-y-4"><div class="aic-card"><h3 class="font-bold" style="color:#102a5c">🎯 Simulacros tipo Saber 11</h3><p class="text-sm text-slate-600">Dos sesiones de 4 horas y 30 minutos, con la misma estructura del examen. Una vez empiezas, el tiempo no se detiene. No recargues la página.</p></div>${cards||'<div class="aic-card text-center text-slate-600">Todavía no tienes simulacros Saber 11 asignados. Tu docente los publicará aquí.</div>'}</div>`;
+      ${falta.length?`<div class="text-xs" style="color:#b45309">Simulacro parcial: todavía no están todas las preguntas oficiales de ${[...new Set(falta.map(x=>x.area))].join(', ')}.</div>`:''}</div><div class="grid sm:grid-cols-2 gap-3">${bloques}</div>${res}${historialHtml}</div>`}).join('');
+  return`<div class="space-y-4"><div class="aic-card"><h3 class="font-bold" style="color:#102a5c">🎯 Simulacros tipo Saber 11</h3><p class="text-sm text-slate-600">Dos sesiones de 4 horas y 30 minutos, con la misma estructura del examen. Una vez empiezas, el tiempo no se detiene. Si necesitas recargar, podrás reanudar la sesión desde el mismo navegador y recuperar las respuestas guardadas en este dispositivo.</p></div>${cards||'<div class="aic-card text-center text-slate-600">Todavía no tienes simulacros Saber 11 asignados. Tu docente los publicará aquí.</div>'}</div>`;
 }
 
 /* ---------- docente ---------- */
@@ -159,7 +213,7 @@ function vEstructura(){
   const tot=AREAS.reduce((s,a)=>s+(OFI[1][a]||0)+(OFI[2][a]||0),0);
   return`<div class="aic-card"><div class="aic-card-head"><div><h3>Estructura oficial del Saber 11</h3><p>Preguntas calificadas por sesión, según la guía de orientación del ICFES (${tot} en total)</p></div></div>
   <div class="aic-table-wrap"><table class="w-full text-sm text-left"><tr class="text-slate-500"><th>Prueba</th><th>Sesión 1</th><th>Sesión 2</th><th>Total</th><th>En el banco</th><th>Estado</th></tr>${AREAS.map(fila).join('')}</table></div>
-  <p class="text-xs text-slate-500 mt-2">Cada sesión dura 4 h 30 min. Si falta una prueba en el banco, el simulacro se arma sin ella y queda marcado como <b>parcial</b>. Ciencias Naturales usa preguntas clasificadas en ese componente del banco. Si no hay suficientes preguntas publicadas y calificables, el simulacro se crea parcial.</p></div>`;
+  <p class="text-xs text-slate-500 mt-2">Cada sesión dura 4 h 30 min. El simulacro solo se crea cuando el banco contiene la cantidad requerida de preguntas publicadas y con clave válida. Ciencias Naturales admite preguntas clasificadas como Biología, Química y Física.</p></div>`;
 }
 function vCrear(){
   const F=Z.f,cs=(D.courses||[]).slice().sort((a,b)=>a.grade-b.grade||String(a.name).localeCompare(String(b.name)));
@@ -174,8 +228,8 @@ function vCrear(){
    <label class="text-sm block">Intentos por sesión<input type="number" min="1" max="5" class="border rounded-lg p-2" style="width:6rem" value="${F.n}" oninput="SABER.f('n',Math.max(1,Math.min(5,+this.value||1)))"></label>
    <label class="text-sm block sm:col-span-2">Indicaciones para los estudiantes (opcional)<textarea class="border rounded-lg p-2 w-full" rows="2" maxlength="500" oninput="SABER.f('d',this.value)">${esc(F.d)}</textarea></label>
    <div class="text-sm sm:col-span-2"><div class="font-semibold mb-1">Cursos que lo presentan</div><div class="flex flex-wrap gap-3">${cs.map(c=>`<label class="flex items-center gap-2"><input type="checkbox" ${F.c.includes(c.id)?'checked':''} onchange="SABER.curso('${c.id}',this.checked)"> ${c.grade}° ${esc(c.name)}</label>`).join('')||'<span class="text-xs text-slate-500">Primero crea un curso en "Cursos y estudiantes".</span>'}</div></div></div>
-  <div class="mt-4 rounded-xl p-3" style="background:#f7fafd;border:1px solid #dce7ef"><div class="font-semibold text-sm mb-2">Cobertura del banco para esta configuración</div><div class="grid sm:grid-cols-2 gap-2">${cov.map(x=>`<div class="flex justify-between gap-2 text-xs"><span>${x.a}</span><b style="color:${x.d>=x.n?'#168052':'#b7791f'}">${x.d} / ${x.n} ${x.d>=x.n?'✓':'· incompletas'}</b></div>`).join('')}</div>${faltan.length?`<p class="text-xs mt-2" style="color:#a16207">Atención: el banco no alcanza la estructura solicitada en ${faltan.map(x=>x.a).join(', ')}. El sistema creará un simulacro parcial con las preguntas disponibles; no completará los faltantes con preguntas inventadas.</p>`:'<p class="text-xs mt-2" style="color:#168052">Cobertura suficiente según el conteo actual del banco. Las preguntas se seleccionan al crear el simulacro.</p>'}</div>
-  <div class="mt-3"><button onclick="SABER.crear()" class="px-5 py-2 rounded-lg bg-indigo-600 text-white">Crear simulacro Saber 11</button></div></div>`;
+  <div class="mt-4 rounded-xl p-3" style="background:#f7fafd;border:1px solid #dce7ef"><div class="font-semibold text-sm mb-2">Cobertura del banco para esta configuración</div><div class="grid sm:grid-cols-2 gap-2">${cov.map(x=>`<div class="flex justify-between gap-2 text-xs"><span>${x.a}</span><b style="color:${x.d>=x.n?'#168052':'#b7791f'}">${x.d} / ${x.n} ${x.d>=x.n?'✓':'· incompletas'}</b></div>`).join('')}</div>${faltan.length?`<p class="text-xs mt-2" style="color:#a16207">Atención: el banco no alcanza la estructura solicitada en ${faltan.map(x=>x.a).join(', ')}. No podrás crear este simulacro todavía. Primero deben cargarse y publicarse suficientes preguntas válidas; no se inventarán ni se reducirán las cantidades.</p>`:'<p class="text-xs mt-2" style="color:#168052">Cobertura suficiente según el conteo actual del banco. Las preguntas se seleccionan al crear el simulacro.</p>'}</div>
+  <div class="mt-3"><button onclick="SABER.crear()" ${faltan.length?'disabled title="Faltan preguntas válidas en el banco"':''} class="px-5 py-2 rounded-lg bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed">${faltan.length?'Banco incompleto':'Crear simulacro Saber 11'}</button></div></div>`;
 }
 function vRes(){
   const sim=Z.sims.find(x=>x.id===Z.ver);if(!sim)return'';
@@ -183,7 +237,12 @@ function vRes(){
   const cName=id=>{const c=(D.courses||[]).find(x=>x.id===id);return c?c.grade+'° '+c.name:'Curso sin identificar'};
   const roster=Object.values(Z.names).filter(p=>p.role==='est'&&courseIds.includes(p.course_id));
   const porU={};atts.forEach(a=>{(porU[a.user_id]=porU[a.user_id]||[]).push(a)});
-  const filas=Object.entries(porU).map(([u,l])=>{const cb=combinar(l),p=Z.names[u]||{};return{u,n:p.full_name||'Estudiante',c:cName(p.course_id),courseId:p.course_id||'sin-curso',cb,ses:new Set(l.map(x=>x.sesion)).size,attempts:l.length}}).sort((a,b)=>(b.cb.global||0)-(a.cb.global||0));
+  const filas=Object.entries(porU).map(([u,l])=>{
+    const cb=combinar(l),p=Z.names[u]||{},latest={};
+    l.forEach(a=>{if(!latest[a.sesion]||new Date(a.created_at)>new Date(latest[a.sesion].created_at))latest[a.sesion]=a});
+    const recent=combinar(Object.values(latest));
+    return{u,n:p.full_name||'Estudiante',c:cName(p.course_id),courseId:p.course_id||'sin-curso',cb,recentGlobal:recent.global,ses:new Set(l.map(x=>x.sesion)).size,attempts:l.length}
+  }).sort((a,b)=>(b.cb.global||0)-(a.cb.global||0));
   const participantes=new Set(atts.map(a=>a.user_id));
   const pendientes=roster.filter(p=>!participantes.has(p.id)).sort((a,b)=>String(a.full_name||'').localeCompare(String(b.full_name||''),'es'));
   const prom=a=>{const v=filas.map(f=>f.cb.areas[a]).filter(x=>x&&x.t).map(x=>pct(x.c,x.t));return v.length?Math.round(mean(v)):'—'};
@@ -206,7 +265,7 @@ function vRes(){
   ${fortaleza&&refuerzo?`<div class="grid sm:grid-cols-2 gap-3"><div class="rounded-xl p-3" style="background:#edf8f2;border:1px solid #ccebd8"><div class="text-xs font-semibold" style="color:#18704e">FORTALEZA DEL GRUPO</div><div class="font-bold mt-1">${fortaleza.a}</div><div class="text-xl font-extrabold" style="color:#18704e">${fortaleza.v}/100</div></div><div class="rounded-xl p-3" style="background:#fff7e9;border:1px solid #f2dfb9"><div class="text-xs font-semibold" style="color:#9a6414">COMPETENCIA PARA REFORZAR</div><div class="font-bold mt-1">${refuerzo.a}</div><div class="text-xl font-extrabold" style="color:#9a6414">${refuerzo.v}/100</div></div></div>`:''}
   <div><h4 class="font-bold mb-2">Comparación académica por curso</h4><div class="aic-table-wrap"><table class="w-full text-sm text-left"><thead><tr><th>Curso</th><th>Participantes</th>${AREAS.map(a=>`<th>${CORTA[a]}</th>`).join('')}<th>Global</th></tr></thead><tbody>${cursos.map(g=>`<tr class="border-t"><td class="py-2"><b>${esc(g.name)}</b></td><td>${g.done.length}</td>${AREAS.map(a=>`<td>${mediaArea(g,a)}</td>`).join('')}<td><b>${mediaCurso(g)}</b></td></tr>`).join('')}</tbody></table></div><p class="text-xs text-slate-500 mt-1">Los promedios académicos se calculan solo con quienes presentaron. La cobertura se calcula sobre el alumnado asignado a cada curso.</p></div>
   <div><h4 class="font-bold mb-2">Seguimiento de sesiones pendientes</h4><div class="aic-table-wrap"><table class="w-full text-sm text-left"><thead><tr><th>Estudiante</th><th>Curso</th><th>Sesión 1</th><th>Sesión 2</th><th>Estado</th></tr></thead><tbody>${roster.filter(p=>{const seen=new Set((porU[p.id]||[]).map(a=>a.sesion));return expected.some(x=>!seen.has(x))}).map(p=>{const seen=new Set((porU[p.id]||[]).map(a=>a.sesion));return`<tr class="border-t"><td class="py-2">${esc(p.full_name||'Estudiante')}</td><td>${esc(cName(p.course_id))}</td><td>${expected.includes(1)?seen.has(1)?'Presentada':'Pendiente':'No aplica'}</td><td>${expected.includes(2)?seen.has(2)?'Presentada':'Pendiente':'No aplica'}</td><td><b>${seen.size?'Incompleto':'Sin iniciar'}</b></td></tr>`}).join('')||'<tr><td colspan="5" class="py-3 text-slate-500">No hay sesiones pendientes registradas.</td></tr>'}</tbody></table></div></div>
-  <div><h4 class="font-bold mb-2">Resultados individuales</h4><div class="aic-table-wrap"><table class="w-full text-sm text-left"><thead><tr><th>Estudiante</th><th>Curso</th>${AREAS.map(a=>`<th>${CORTA[a]}</th>`).join('')}<th>Global est.</th><th>Sesiones</th></tr></thead><tbody>${filas.map(f=>`<tr class="border-t"><td class="py-2"><b>${esc(f.n)}</b></td><td>${esc(f.c)}</td>${AREAS.map(a=>`<td>${f.cb.areas[a]&&f.cb.areas[a].t?pct(f.cb.areas[a].c,f.cb.areas[a].t):'—'}</td>`).join('')}<td><b>${f.cb.global==null?'—':f.cb.global}</b></td><td>${f.ses}</td></tr>`).join('')}<tr class="border-t" style="background:#f1f5fb"><td class="py-2" colspan="2"><b>Promedio participantes</b></td>${AREAS.map(a=>`<td><b>${prom(a)}</b></td>`).join('')}<td><b>${globals.length?Math.round(mean(globals)):'—'}</b></td><td>—</td></tr></tbody></table></div></div>
+  <div><h4 class="font-bold mb-2">Resultados individuales</h4><div class="aic-table-wrap"><table class="w-full text-sm text-left"><thead><tr><th>Estudiante</th><th>Curso</th>${AREAS.map(a=>`<th>${CORTA[a]}</th>`).join('')}<th>Global mejor</th><th>Global reciente</th><th>Intentos</th><th>Sesiones</th></tr></thead><tbody>${filas.map(f=>`<tr class="border-t"><td class="py-2"><b>${esc(f.n)}</b></td><td>${esc(f.c)}</td>${AREAS.map(a=>`<td>${f.cb.areas[a]&&f.cb.areas[a].t?pct(f.cb.areas[a].c,f.cb.areas[a].t):'—'}</td>`).join('')}<td><b>${f.cb.global==null?'—':f.cb.global}</b></td><td>${f.recentGlobal==null?'—':f.recentGlobal}</td><td>${f.attempts}</td><td>${f.ses}</td></tr>`).join('')}<tr class="border-t" style="background:#f1f5fb"><td class="py-2" colspan="2"><b>Promedio participantes</b></td>${AREAS.map(a=>`<td><b>${prom(a)}</b></td>`).join('')}<td><b>${globals.length?Math.round(mean(globals)):'—'}</b></td><td>—</td><td>—</td><td>—</td></tr></tbody></table></div></div>
   <p class="text-xs text-slate-500">Áreas de 0 a 100 y global estimado de 0 a 500; no son puntajes oficiales ICFES. Se usa el mejor intento de cada sesión. Una sesión pendiente no se interpreta como cero.</p>`:'<p class="text-sm text-slate-500">No hay estudiantes asignados a este simulacro ni intentos registrados.</p>'}${!Z.rosterLoaded?'<p class="text-xs text-amber-700">El listado de estudiantes no está disponible; no se calculan pendientes ni cobertura.</p>':''}</div>`;
 }
 function vDoc(){
@@ -228,7 +287,7 @@ window.SABER={
   load,view,
   ini:confirmStart,
   go(k){if(Z.run){Z.run.i=Math.max(0,Math.min(Z.run.qs.length-1,k));render();window.scrollTo(0,0)}},
-  ans(id,k){if(Z.run){Z.run.ans[id]=k;render()}},
+  ans(id,k){if(Z.run){Z.run.ans[id]=k;try{localStorage.setItem(Z.run.storeKey,JSON.stringify(Z.run.ans))}catch(e){}scheduleServerSave(Z.run);render()}},
   fin(){finish(false)},
   cerrar(){Z.res=null;render()},
   f(k,v){Z.f[k]=v},
@@ -258,6 +317,8 @@ window.SABER={
     try{
       if(!F.t.trim())throw new Error('Escribe un nombre para el simulacro.');
       if(!F.c.length)throw new Error('Marca al menos un curso.');
+      if(F.due&&new Date(F.due+'T23:59:00')<=new Date())throw new Error('La fecha límite debe ser hoy o un día futuro.');
+      if((F.d||'').length>500)throw new Error('Las indicaciones no pueden superar 500 caracteres.');
       const req=F.m==='sesion1'?{'Matemáticas':25,'Lectura Crítica':41,'Sociales y Ciudadanas':25,'Ciencias Naturales':29}:F.m==='sesion2'?{'Matemáticas':25,'Sociales y Ciudadanas':25,'Ciencias Naturales':29,'Inglés':55}:{'Matemáticas':50,'Lectura Crítica':41,'Sociales y Ciudadanas':50,'Ciencias Naturales':58,'Inglés':55};
       const faltan=Object.entries(req).filter(([a,n])=>disponible(a)<n);
       if(faltan.length&&!confirm('El banco no tiene suficientes preguntas publicadas y calificables para completar '+faltan.map(([a,n])=>a+' ('+disponible(a)+'/'+n+')').join(', ')+'.\\n\\nSe creará un simulacro PARCIAL con las preguntas disponibles. ¿Continuar?'))return;

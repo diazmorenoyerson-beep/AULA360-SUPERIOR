@@ -731,3 +731,350 @@ body{background:linear-gradient(180deg,#edf4f7 0,#f5f7fa 340px)!important}
 .aic-main .sb-qnav.is-answered{background:#e5f3ec!important;border-color:#b9dfca!important;color:#18704e!important}
 .aic-main .sb-qnav.is-current{outline:2px solid #2864e8!important;outline-offset:2px}
 @media(max-width:600px){.aic-main .sb-answer{min-height:50px;padding:11px!important}}
+
+
+/* ==========================================================
+   AULA360 PREMIUM · sistema visual 3D unificado v13
+   Profundidad real, interacción táctil y jerarquía consistente.
+   No altera la lógica ni los colores semánticos de cada módulo.
+   ========================================================== */
+:root{
+  --a360-ink:#163b57;
+  --a360-blue:#2679a8;
+  --a360-blue-deep:#12486d;
+  --a360-surface:#ffffff;
+  --a360-line:#d8e5ee;
+  --a360-shadow:rgba(16,49,75,.14);
+}
+body{
+  background:
+    radial-gradient(ellipse at 8% 2%,rgba(52,137,183,.10),transparent 34%),
+    radial-gradient(ellipse at 94% 12%,rgba(39,116,151,.08),transparent 30%),
+    linear-gradient(180deg,#f5f9fc 0%,#edf3f8 100%)!important;
+  color:var(--a360-ink);
+}
+#app button:not(:disabled):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb),
+#app [role="button"]:not(:disabled){
+  border-radius:13px!important;
+  border-bottom-width:4px!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.48),
+    0 4px 0 rgba(18,55,82,.16),
+    0 9px 17px rgba(18,55,82,.12)!important;
+  transform:translateY(0);
+  transition:transform .16s ease,box-shadow .16s ease,filter .16s ease!important;
+  -webkit-tap-highlight-color:transparent;
+}
+#app button:hover:not(:disabled):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb),
+#app [role="button"]:hover:not(:disabled){
+  transform:translateY(-2px);
+  filter:brightness(1.035);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    0 6px 0 rgba(18,55,82,.17),
+    0 13px 22px rgba(18,55,82,.17)!important;
+}
+#app button:active:not(:disabled):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb),
+#app [role="button"]:active:not(:disabled){
+  transform:translateY(3px);
+  border-bottom-width:1px!important;
+  box-shadow:inset 0 2px 5px rgba(12,39,59,.20),0 1px 2px rgba(18,55,82,.10)!important;
+  filter:brightness(.99);
+}
+#app button:focus-visible,#app [role="button"]:focus-visible,
+#app input:focus-visible,#app select:focus-visible,#app textarea:focus-visible{
+  outline:3px solid rgba(39,125,174,.34)!important;
+  outline-offset:3px!important;
+}
+#app button[class*="bg-indigo-"],#app button[class*="bg-blue-"],
+#app button[class*="bg-sky-"],#app button[class*="bg-cyan-"]{
+  background-image:linear-gradient(180deg,rgba(255,255,255,.20),rgba(7,45,76,.13))!important;
+  border-color:#1d638e!important;border-bottom-color:#103e5d!important;
+}
+#app button[class*="bg-emerald-"],#app button[class*="bg-green-"],
+#app button[class*="bg-teal-"]{
+  background-image:linear-gradient(180deg,rgba(255,255,255,.22),rgba(0,69,58,.14))!important;
+  border-bottom-color:#07574f!important;
+}
+#app button[class*="bg-amber-"],#app button[class*="bg-yellow-"],
+#app button[class*="bg-orange-"]{
+  background-image:linear-gradient(180deg,rgba(255,255,255,.30),rgba(110,69,12,.12))!important;
+  border-bottom-color:#a96e20!important;
+}
+#app>.max-w-md{
+  box-shadow:0 4px 0 rgba(18,55,82,.06),0 22px 55px rgba(16,49,75,.17)!important;
+}
+#app>.max-w-md button:first-of-type{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 4px 0 #103e5d,0 10px 20px rgba(18,72,109,.20)!important;
+}
+.aic-sidebar{
+  box-shadow:5px 0 24px rgba(17,49,77,.07)!important;
+}
+.aic-sidebar nav .aic-nav{
+  border:1px solid transparent!important;
+  border-radius:12px!important;
+  transition:background .16s ease,transform .16s ease,box-shadow .16s ease!important;
+}
+.aic-sidebar nav .aic-nav:hover{
+  transform:translateX(2px);
+  background:linear-gradient(90deg,#edf5fa,#f8fbfd)!important;
+}
+.aic-main .aic-top{
+  border-bottom-color:#dce7ee!important;
+}
+.aic-main .aic-hero{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 7px 0 #dce7ed,0 20px 38px rgba(15,60,87,.19)!important;
+}
+.aic-main .aic-kpi{
+  background:linear-gradient(150deg,#fff 0%,#f6fafd 100%)!important;
+  box-shadow:inset 0 1px 0 #fff,0 4px 0 #e1eaf0,0 10px 20px rgba(17,49,77,.07)!important;
+}
+.aic-main .aic-kpi:hover{
+  transform:translateY(-3px)!important;
+  box-shadow:inset 0 1px 0 #fff,0 7px 0 #dce7ee,0 17px 27px rgba(17,49,77,.13)!important;
+}
+.aic-main .aic-card{
+  box-shadow:inset 0 1px 0 #fff,0 3px 0 #e4edf2,0 10px 24px rgba(17,49,77,.065)!important;
+}
+.aic-main .aic-card-head{
+  border-bottom-color:#e6eef3!important;
+}
+.aic-main img[src*="storage"],.aic-main img[src*="image"],.aic-main img[src*="logo"]{
+  border-radius:12px;
+  filter:drop-shadow(0 3px 5px rgba(17,49,77,.10));
+}
+.aic-main .sb-answer{
+  border-bottom-width:3px!important;
+  box-shadow:inset 0 1px 0 #fff,0 3px 0 #dce6ed,0 7px 14px rgba(22,55,78,.06)!important;
+}
+.aic-main .sb-answer:hover{
+  transform:translateY(-2px)!important;
+  box-shadow:inset 0 1px 0 #fff,0 5px 0 #d7e3eb,0 11px 18px rgba(22,55,78,.10)!important;
+}
+.aic-main .sb-answer.is-selected{
+  border-bottom-color:#a9c9fa!important;
+}
+@media(max-width:760px){
+  #app button:not(.aic-icon-btn):not(.aic-user):not(.aic-hamb){min-height:43px}
+  .aic-main .aic-kpi{box-shadow:inset 0 1px 0 #fff,0 3px 0 #e1eaf0,0 7px 14px rgba(17,49,77,.06)!important}
+}
+@media(prefers-reduced-motion:reduce){
+  #app button,#app [role="button"],.aic-main .aic-kpi,.aic-sidebar nav .aic-nav{transition:none!important}
+}
+
+
+/* ===== AULA360 PREMIUM · botones con volumen 3D ===== */
+#app button.bg-indigo-600,
+#app button.bg-indigo-700,
+#app button.bg-emerald-600,
+#app button.bg-blue-600,
+#app button.bg-blue-700,
+#app .aic-empty button,
+#app .aic-profile .aic-hero-actions button:not(.ghost),
+#app .aic-tabs button.on{
+  position:relative;
+  transform:translateY(0);
+  border:1px solid rgba(255,255,255,.22)!important;
+  border-bottom:4px solid rgba(12,28,74,.38)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.28),
+    inset 0 -1px 0 rgba(9,25,65,.12),
+    0 5px 0 rgba(15,35,82,.12),
+    0 9px 18px rgba(22,55,115,.16)!important;
+  transition:transform .14s ease,box-shadow .14s ease,filter .14s ease!important;
+  text-shadow:0 1px 1px rgba(0,0,0,.12);
+}
+#app button.bg-indigo-600,
+#app button.bg-indigo-700,
+#app .aic-tabs button.on{
+  background-image:linear-gradient(180deg,#6178ff 0%,#4338ca 48%,#30249d 100%)!important;
+}
+#app button.bg-emerald-600{
+  background-image:linear-gradient(180deg,#34d399 0%,#059669 52%,#047857 100%)!important;
+}
+#app button.bg-blue-600,
+#app button.bg-blue-700,
+#app .aic-empty button,
+#app .aic-profile .aic-hero-actions button:not(.ghost){
+  background-image:linear-gradient(180deg,#60a5fa 0%,#2563eb 52%,#1d4ed8 100%)!important;
+}
+#app button.bg-indigo-600:hover:not(:disabled),
+#app button.bg-indigo-700:hover:not(:disabled),
+#app button.bg-emerald-600:hover:not(:disabled),
+#app button.bg-blue-600:hover:not(:disabled),
+#app button.bg-blue-700:hover:not(:disabled),
+#app .aic-empty button:hover:not(:disabled),
+#app .aic-profile .aic-hero-actions button:not(.ghost):hover:not(:disabled),
+#app .aic-tabs button.on:hover:not(:disabled){
+  transform:translateY(-2px);
+  filter:brightness(1.045);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.34),
+    0 7px 0 rgba(15,35,82,.12),
+    0 13px 22px rgba(22,55,115,.22)!important;
+}
+#app button.bg-indigo-600:active:not(:disabled),
+#app button.bg-indigo-700:active:not(:disabled),
+#app button.bg-emerald-600:active:not(:disabled),
+#app button.bg-blue-600:active:not(:disabled),
+#app button.bg-blue-700:active:not(:disabled),
+#app .aic-empty button:active:not(:disabled),
+#app .aic-profile .aic-hero-actions button:not(.ghost):active:not(:disabled),
+#app .aic-tabs button.on:active:not(:disabled){
+  transform:translateY(3px);
+  border-bottom-width:1px!important;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.18),0 1px 2px rgba(15,35,82,.12)!important;
+}
+#app button:disabled{
+  filter:saturate(.55);
+  box-shadow:none!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #app button.bg-indigo-600,#app button.bg-indigo-700,#app button.bg-emerald-600,
+  #app button.bg-blue-600,#app button.bg-blue-700,#app .aic-empty button,
+  #app .aic-profile .aic-hero-actions button:not(.ghost),#app .aic-tabs button.on{
+    transition:none!important;
+  }
+}
+
+
+/* AULA360 PREMIUM · acabado 3D coherente en acciones principales de evaluaciones */
+#app button.aic-btn-3d{
+  position:relative;
+  border:1px solid rgba(255,255,255,.28)!important;
+  border-bottom:4px solid rgba(12,35,91,.38)!important;
+  background-image:linear-gradient(180deg,#5d91ff 0%,#2864e8 52%,#1749b8 100%)!important;
+  color:#fff!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 0 rgba(17,49,110,.13),0 9px 17px rgba(30,82,170,.17)!important;
+  transition:transform .14s ease,box-shadow .14s ease,filter .14s ease!important;
+  text-shadow:0 1px 1px rgba(0,0,0,.12);
+}
+#app button.aic-btn-3d:hover:not(:disabled){
+  transform:translateY(-2px);
+  filter:brightness(1.05);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 0 rgba(17,49,110,.13),0 13px 22px rgba(30,82,170,.22)!important;
+}
+#app button.aic-btn-3d:active:not(:disabled){
+  transform:translateY(3px);
+  border-bottom-width:1px!important;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.18),0 1px 2px rgba(17,49,110,.12)!important;
+}
+#app button.aic-btn-3d:disabled{filter:saturate(.5);box-shadow:none!important}
+@media(prefers-reduced-motion:reduce){#app button.aic-btn-3d{transition:none!important}}
+
+
+/* =========================================================
+   AULA360 PREMIUM · fondos fotográficos educativos CC0
+   Fotografías CC0 de Wikimedia Commons; paneles glass para
+   que el fondo sea visible en todas las vistas sin perder
+   contraste ni legibilidad.
+   ========================================================= */
+html,body{min-height:100%;background-color:#102a43!important}
+body{
+  background-image:
+    linear-gradient(118deg,rgba(5,23,43,.72),rgba(9,42,66,.58) 52%,rgba(5,25,46,.74)),
+    url("https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Students_listening_in_class.jpg/1280px-Students_listening_in_class.jpg")!important;
+  background-position:center,center 42%!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
+  background-attachment:fixed!important;
+  color:#17364f!important;
+}
+#app{background:transparent!important}
+#app>.max-w-md{
+  background:rgba(239,247,252,.88)!important;
+  -webkit-backdrop-filter:blur(18px);
+  backdrop-filter:blur(18px);
+  border:1px solid rgba(255,255,255,.52)!important;
+}
+#app>.max-w-md p{color:#49657a!important}
+#app .aic-shell{
+  background:
+    linear-gradient(112deg,rgba(7,29,49,.70),rgba(10,43,64,.56) 55%,rgba(8,34,54,.70)),
+    url("https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Students_and_Readers_in_the_Library.jpg/1280px-Students_and_Readers_in_the_Library.jpg") center/cover fixed!important;
+}
+#app .aic-main{background:transparent!important}
+#app .aic-top,#app header{
+  background:rgba(241,248,252,.88)!important;
+  -webkit-backdrop-filter:blur(14px);
+  backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.54)!important;
+  box-shadow:0 12px 32px rgba(4,24,43,.14)!important;
+}
+#app .aic-card,#app .aic-kpi,#app .aic-row,
+#app .bg-white.rounded-2xl,#app .bg-white.rounded-xl,
+#app .bg-white.rounded-lg{
+  background:rgba(241,248,252,.90)!important;
+  -webkit-backdrop-filter:blur(12px);
+  backdrop-filter:blur(12px);
+  border-color:rgba(210,226,237,.82)!important;
+}
+#app nav.aic-tabs{
+  background:rgba(7,32,54,.76)!important;
+  border-color:rgba(255,255,255,.16)!important;
+  -webkit-backdrop-filter:blur(12px);
+  backdrop-filter:blur(12px);
+}
+#app nav.aic-tabs button:not(.on){background:rgba(244,249,252,.88)!important}
+#app .aic-main .aic-card table tbody tr:hover td{background:rgba(225,239,247,.82)!important}
+#app .aic-main .aic-card-head{background:transparent!important}
+@media(max-width:760px){
+  body{background-attachment:scroll!important;background-position:center,55% center!important}
+  #app .aic-shell{background-attachment:scroll!important;background-position:center,55% center!important}
+}
+@media(prefers-reduced-motion:reduce){
+  body{background-attachment:scroll!important}
+}
+
+/* Hacer visible el fondo también a través de los paneles de cada módulo */
+#app .bg-white:not(button):not(input):not(.sb-answer){
+  background-color:rgba(222,237,247,.82)!important;
+  -webkit-backdrop-filter:blur(13px);
+  backdrop-filter:blur(13px);
+}
+#app .aic-card,#app .aic-kpi,#app .aic-row,
+#app>.max-w-md,#app>.max-w-md.bg-white{
+  background-color:rgba(222,237,247,.82)!important;
+  -webkit-backdrop-filter:blur(15px);
+  backdrop-filter:blur(15px);
+}
+#app .aic-main .aic-card table thead th{
+  background:rgba(211,228,239,.90)!important;
+}
+#app .aic-main .aic-card table tbody td{
+  background:rgba(239,247,251,.72)!important;
+}
+
+
+/* AULA360 PREMIUM · coherencia visual global entre todos los módulos */
+#app .aic-main button:not(.ghost):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb):not(.aic-nav):not(.aic-tabs button:not(.on)),
+#app .aic-login-form button,
+#app>.max-w-md button{
+  border-bottom:3px solid rgba(13,43,91,.25)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 3px 0 rgba(13,43,91,.10),0 7px 14px rgba(13,43,91,.10)!important;
+  transition:transform .14s ease,box-shadow .14s ease,filter .14s ease!important;
+}
+#app .aic-main button:not(.ghost):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb):not(.aic-nav):not(.aic-tabs button:not(.on)):hover:not(:disabled),
+#app .aic-login-form button:hover:not(:disabled),
+#app>.max-w-md button:hover:not(:disabled){
+  transform:translateY(-2px);
+  filter:brightness(1.04);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 5px 0 rgba(13,43,91,.12),0 11px 18px rgba(13,43,91,.16)!important;
+}
+#app .aic-main button:not(.ghost):not(.aic-icon-btn):not(.aic-user):not(.aic-hamb):not(.aic-nav):not(.aic-tabs button:not(.on)):active:not(:disabled),
+#app .aic-login-form button:active:not(:disabled),
+#app>.max-w-md button:active:not(:disabled){
+  transform:translateY(2px);
+  border-bottom-width:1px!important;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.16),0 1px 2px rgba(13,43,91,.10)!important;
+}
+#app .aic-main input,#app .aic-main select,#app .aic-main textarea,
+#app .aic-login-form input,#app>.max-w-md input{
+  border-color:rgba(148,174,195,.62)!important;
+  border-radius:11px!important;
+  background:rgba(255,255,255,.92)!important;
+  box-shadow:inset 0 1px 2px rgba(19,48,72,.045)!important;
+}
+@media(prefers-reduced-motion:reduce){
+  #app .aic-main button,#app .aic-login-form button,#app>.max-w-md button{transition:none!important}
+}

@@ -7,9 +7,10 @@
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="AULA360">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
-<link rel="stylesheet" href="styles.css?v=12">
+<link rel="stylesheet" href="styles.css?v=17">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="supabase-config.js"></script>
 <style>body{background:#f1f5f9;color:#0f172a;font-family:system-ui,sans-serif}.on{background:#4f46e5;color:#fff}.pop{animation:pop .4s ease}@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
 #printarea{display:none}
@@ -36,6 +37,7 @@
 #printarea .bb{position:absolute;width:5mm;height:5mm;border:.45mm solid #000;border-radius:50%;box-sizing:border-box}
 #printarea table.kt{width:100%;border-collapse:collapse;font-size:9pt}
 #printarea table.kt td,#printarea table.kt th{border:1px solid #000;padding:2px 5px;text-align:left}
+
 </style>
 </head><body>
 <div id="app" class="max-w-6xl mx-auto p-3 sm:p-5"><div class="max-w-md mx-auto mt-10 bg-white rounded-2xl shadow p-6 space-y-3"><img src="aula360-logo-vertical.png" alt="AULA360 · Aprende, practica, evalúa" style="display:block;margin:0 auto;width:min(230px,70%);height:auto;object-fit:contain"><h1 class="sr-only" style="position:absolute;left:-9999px">AULA360</h1><p class="text-center text-sm text-slate-500">Clases virtuales y simulacros Pre-ICFES</p><div class="flex gap-2"><button onclick="setMode('login')" class="flex-1 py-2 rounded-lg text-sm on">Entrar</button><button onclick="setMode('register')" class="flex-1 py-2 rounded-lg text-sm bg-slate-200">Soy estudiante</button><button onclick="setMode('docente')" class="flex-1 py-2 rounded-lg text-sm bg-slate-200">Soy docente</button></div>
@@ -45,7 +47,7 @@
   <button onclick="resend()" class="w-full text-xs text-slate-500 underline">Reenviar correo de confirmación</button></div></div>
 <div id="toast" class="fixed top-4 right-4 z-50 space-y-2"></div>
 <script>
-let sb=supabase.createClient(window.AULA360_SUPABASE.url,window.AULA360_SUPABASE.publishableKey);
+let sb=window.supabase?.createClient?window.supabase.createClient(window.AULA360_SUPABASE.url,window.AULA360_SUPABASE.publishableKey):null;
 const IMG=window.AULA360_SUPABASE.storage.questions;
 const LOGO=window.AULA360_SUPABASE.storage.schoolLogos;
 const MEDALS={first:['🥇','Primer Paso','Completar tu primer simulacro'],perfect:['🧠','Mente Brillante','100% de respuestas correctas'],clock:['⏱️','Contra el Reloj','Terminar con más de la mitad del tiempo restante'],streak:['🔥','Constante','Completar 3 simulacros'],high:['⭐','Alto Puntaje','Obtener 80 o más']};
@@ -54,7 +56,7 @@ const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;
 const fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
 const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0;
 const v=id=>document.getElementById(id)?.value?.trim()||'';
-const RG0=()=>({nm:'',tel:'',em:'',pw:'',dep:'',mun:'',col:'',otro:false,otroTxt:'',sede:'',q:'',gs:[],cur:{},area:'',asg:[]});
+const RG0=()=>({nm:'',tel:'',em:'',pw:'',dep:'',mun:'',col:'',otro:false,otroTxt:'',sede:'',q:'',gs:[],cur:{},area:'',asg:[],sinAsig:false);
 let M=null,tab='sim',S=null,RES=null,D={},timer=null,charts=[],chan=null,liveChan=null,authMode='login',QF={g:11,s:'',f:'all',p:0},SF={k:'simulacro',t:'',g:11,s:'',n:10,m:2,a:1,due:'',desc:'',cs:[]},CF={g:6,name:''},RF={c:'',f:'excel',txt:'',rows:[],skip:0,fname:''},RG=RG0(),ED={id:'',nm:'',tel:'',area:'',asg:[],gs:[]},PJ={c:'',t:'',s:'',n:10,v:3,d:'',st:'',ver:'',refs:[]},LT={l1:'',l2:'',l3:'',logo:''};
 
 function toast(ic,t,d){const e=document.createElement('div');e.className='pop bg-white border-l-4 border-amber-400 shadow-xl rounded-xl p-3 w-72 flex gap-3';e.innerHTML=`<div class="text-3xl">${ic}</div><div><div class="font-bold text-sm">${E(t)}</div><div class="text-xs text-slate-600">${E(d)}</div></div>`;document.getElementById('toast').appendChild(e);setTimeout(()=>e.remove(),6500)}
@@ -103,7 +105,17 @@ async function onDep(id){
 }
 async function onMun(id){
   RG.mun=id;RG.col='';RG.sede='';RG.q='';D.cols=[];D.sedes=[];
-  if(id){const r=await sb.from('colegios').select('id,nombre').eq('municipio_id',+id).order('nombre').limit(1000);D.cols=r.data||[]}
+  if(id){
+    let offset=0;
+    while(true){
+      const r=await sb.from('colegios').select('id,nombre').eq('municipio_id',+id).order('nombre').order('id').range(offset,offset+999);
+      if(r.error){err(r.error);break}
+      const page=r.data||[];
+      D.cols.push(...page);
+      if(page.length<1000)break;
+      offset+=1000;
+    }
+  }
   render();
 }
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -130,14 +142,15 @@ async function doDocente(){
   const cursos={};
   for(const g of RG.gs){const l=parseCursos(RG.cur[g]);if(!l.length)return toast('⚠️','Faltan los cursos','Escribe los cursos de '+g+'°, por ejemplo: A, B, C.');cursos[g]=l}
   if(!RG.area)return toast('⚠️','Falta el área','Elige tu área.');
-  if(!RG.asg.length)return toast('⚠️','Falta la asignatura','Marca la asignatura (o asignaturas) que dictas.');
-  const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{emailRedirectTo:window.location.origin+'/',data:{account:'docente',full_name:nm,phone:tel,colegio_id:RG.otro?'':String(RG.col),sede_id:RG.otro?'':String(RG.sede||''),school_other:RG.otro?otroTxt:'',cursos,area:RG.area,asignaturas:RG.asg}}});
+  if(!RG.sinAsig&&!RG.asg.length)return toast('⚠️','Falta la asignatura','Elige una asignatura o marca «Sin asignatura».');
+  const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{emailRedirectTo:window.location.origin+'/',data:{account:'docente',full_name:nm,phone:tel,colegio_id:RG.otro?'':String(RG.col),sede_id:RG.otro?'':String(RG.sede||''),school_other:RG.otro?otroTxt:'',cursos,area:RG.area,asignaturas:RG.sinAsig?[]:RG.asg,sin_asignatura:!!RG.sinAsig}}});
   if(error)return err(error);
   RG=RG0();D.muns=[];D.cols=[];
   if(!data.session){authMode='login';render();return toast('📧','Revisa tu correo','Confirma tu cuenta y luego inicia sesión.')}
   boot();
 }
 async function doAuth(){
+  if(!sb)return toast('⚠️','Servicio de acceso no disponible','No se pudo cargar la conexión con Supabase. Recarga la página o revisa tu conexión y el bloqueo de CDN.');
   if(authMode==='docente')return doDocente();
   if(authMode==='directivo'&&window.DIR)return DIR.doReg();
   const email=v('em');let password=document.getElementById('pw')?.value||'';
@@ -148,9 +161,15 @@ async function doAuth(){
   }
   if(!email||!password)return toast('⚠️','Faltan datos',authMode==='register'?'Escribe tu documento y tu correo.':'Escribe correo y contraseña.');
   if(authMode==='login'){
-    const{error}=await sb.auth.signInWithPassword({email,password});
-    if(error){const m=(error.message||'').toLowerCase();return toast('⚠️','No se pudo entrar',m.includes('not confirmed')?'Tu correo aún no está confirmado. Usa «Reenviar correo de confirmación».':m.includes('invalid login')?'Correo o contraseña incorrectos.':error.message)}
-    return boot();
+    const btn=document.querySelector('button[onclick="doAuth()"]');
+    if(btn){btn.disabled=true;btn.textContent='Verificando…'}
+    try{
+      const{error}=await sb.auth.signInWithPassword({email:email.trim(),password});
+      if(error){const m=(error.message||'').toLowerCase();toast('⚠️','No se pudo entrar',m.includes('not confirmed')?'Tu correo aún no está confirmado. Usa «Reenviar correo de confirmación».':m.includes('invalid login')?'Correo o contraseña incorrectos.':error.message);return}
+      await boot();
+    }catch(e){toast('⚠️','Error de conexión',e?.message||'No fue posible comunicarse con Supabase. Revisa tu conexión e inténtalo de nuevo.')}
+    finally{if(btn){btn.disabled=false;btn.textContent='Entrar'}}
+    return;
   }
   const full_name=v('nm'),grade=v('gr');
   if(!full_name)return toast('⚠️','Falta tu nombre','Escribe tu nombre completo.');
@@ -339,8 +358,9 @@ function vCal(){
 async function go(t){
   leaveChat();tab=t;
   try{
-    if(t==='saber'){await loadScript('saber.js?v=1');await SABER.load()}
-    if(t==='clase'&&M.role==='prof'){await loadScript('aulavirtual.js?v=2')}
+    if(t==='saber'){await loadScript('saber.js?v=2');await SABER.load()}
+    if(t==='institucional'){await loadScript('institucional.js?v=6');await INST.load()}
+    if(t==='clase'&&M.role==='prof'){await loadScript('aulavirtual.js?v=3')}
     if(t==='aclase'||t==='asistencias'){await loadScript('claseasis.js?v=7');await ACL.load()}
     if(t==='planeador'||t==='diario'){await loadScript('planeador.js?v=3');await PLN.load()}
     if(t==='subirp'){await loadScript('subirpreg.js?v=3');await SUBP.load()}
@@ -356,7 +376,7 @@ async function go(t){
     if(t==='permisos'){await loadScript('permisos.js?v=4');await PERM.load()}
     if(['periodo','virtual','plan','saberimp','diag'].includes(t)){
       const MOD={periodo:['periodo.js','PER'],virtual:['virtual.js','VIRT'],plan:['docente.js','DOCP'],diario:['docente.js','DOCP'],saberimp:['saberimp.js','SIMP'],diag:['saberimp.js','SIMP']}[t];
-      await loadScript(MOD[0]+'?v=8');await window[MOD[1]].load(t)}
+      await loadScript(MOD[0]+'?v=11');await window[MOD[1]].load(t)}
     if(t==='perfil'){const {data:u}=await sb.auth.getUser();D.email=(u&&u.user&&u.user.email)||''}
     if(['dcol','ddoc','dcoo','dhist','dadm'].includes(t)){await loadScript('colegio.js?v=9');await DIR.load(t)}
     if(['dhor','mhor'].includes(t)){await loadScript('horarios.js?v=4');await HZUI.load(t)}
@@ -370,7 +390,7 @@ async function go(t){
       D.att={};(b.data||[]).forEach(a=>{const o=D.att[a.simulacro_id]||(D.att[a.simulacro_id]={n:0,best:0});o.n++;o.best=Math.max(o.best,a.score)})}
     if(t==='simp'){
       await loadAvail();await loadCourses();
-      const s=await sb.from('simulacros').select('*,simulacro_targets(course_id)').eq('teacher_id',M.id).order('created_at',{ascending:false});if(s.error)throw s.error;D.sims=s.data}
+      const s=await sb.from('simulacros').select('*,simulacro_targets(course_id)').eq('teacher_id',M.id).order('created_at',{ascending:false});if(s.error)throw s.error;D.sims=s.data;const ids=(s.data||[]).map(x=>x.id);const ar=ids.length?await sb.from('attempts').select('simulacro_id,user_id,score,correct,total,auto,created_at,profiles(full_name)').in('simulacro_id',ids).order('created_at',{ascending:false}).limit(1000):{data:[],error:null};if(ar.error)throw ar.error;D.simAttempts=ar.data||[]}
     if(t==='cur'){
       await loadCourses();const ids=D.courses.map(c=>c.id);
       const p=await sb.from('profiles').select('id,full_name,email,grade,course_id').eq('role','est').order('full_name');if(p.error)throw p.error;
@@ -572,7 +592,7 @@ async function createSim(){
   if(!(SF.a>=1)||SF.a>10)return toast('⚠️','Intentos no válidos','Entre 1 y 10 intentos.');
   if(!SF.cs.length)return toast('⚠️','Elige los cursos','Marca al menos un curso para activarlo.');
   const due=SF.due?new Date(SF.due+'T23:59:00').toISOString():null;
-  const{data,error}=await sb.from('simulacros').insert({title,kind:SF.k,description:(SF.desc||'').trim()||null,grade:SF.g,subject:SF.s,n_questions:SF.n,minutes_per_question:SF.m,max_attempts:SF.a,due_at:due}).select('id').single();
+  const{data,error}=await sb.from('simulacros').insert({teacher_id:M.id,title,kind:SF.k,description:(SF.desc||'').trim(),active:true,grade:SF.g,subject:SF.s,n_questions:SF.n,minutes_per_question:SF.m,max_attempts:SF.a,due_at:due}).select('id').single();
   if(error)return err(error);
   const t=await sb.from('simulacro_targets').insert(SF.cs.map(c=>({simulacro_id:data.id,course_id:c})));if(t.error)return err(t.error);
   SF.t='';SF.desc='';SF.due='';SF.cs=[];toast('✅','Activado','Ya lo ven los estudiantes de los cursos que marcaste.');go('simp');
@@ -784,25 +804,66 @@ async function bulk(patch,txt){
 /* ---------- Simulacro (estudiante) ---------- */
 async function startSim(simId){
   const sim=(D.sims||[]).find(x=>x.id===simId);if(!sim)return;
-  const secs=sim.minutes_per_question*60,n=sim.n_questions;
-  const{data,error}=await sb.from('questions').select('id,part,body,options,image_path,stimulus_title,stimulus_content').eq('grade',sim.grade).eq('subject',sim.subject).eq('active',true);
+  const{data,error}=await sb.rpc('start_general_sim',{p_sim:simId});
   if(error)return err(error);
-  if(data.length<n)return toast('⚠️','No disponible','Hay '+data.length+' preguntas visibles y se piden '+n+'. Avisa a tu docente.');
-  const qs=data.sort(()=>Math.random()-.5).slice(0,n);
-  const total=qs.length*secs;
-  S={grade:sim.grade,subject:sim.subject,qs,ans:{},total,left:total,i:0,sending:false,simId:sim.id,title:sim.title};
+  const qs=data.questions||[];
+  if(!qs.length)return toast('⚠️','Simulacro no disponible','El servidor no entregó preguntas para esta sesión.');
+  S={grade:sim.grade,subject:sim.subject,qs,ans:data.answers||{},total:data.duration_seconds,left:data.seconds_left,
+    i:0,sending:false,simId:sim.id,title:sim.title,runId:data.run_id,expiresAt:data.expires_at,
+    saveChain:Promise.resolve(),saveTimer:null,saveError:null};
   clearInterval(timer);
-  timer=setInterval(()=>{if(!S)return;S.left--;const e=document.getElementById('clk');if(e){e.textContent=fmt(S.left);e.className='font-mono text-2xl font-bold '+(S.left<30?'text-red-600':'text-indigo-700')}if(S.left<=0)finish(true)},1000);
+  timer=setInterval(()=>{
+    if(!S)return;
+    S.left=Math.max(0,Math.ceil((Date.parse(S.expiresAt)-Date.now())/1000));
+    const e=document.getElementById('clk');
+    if(e){e.textContent=fmt(S.left);e.className='font-mono text-2xl font-bold '+(S.left<30?'text-red-600':'text-indigo-700')}
+    if(S.left<=0)finish(true);
+  },500);
+  if(data.resumed)toast('↩️','Sesión recuperada','Continuaste donde quedaste; el reloj siguió corriendo.');
   render();
 }
+function scheduleGeneralSave(R){
+  if(!R||R.sending)return;
+  if(R.saveTimer)clearTimeout(R.saveTimer);
+  R.saveTimer=setTimeout(()=>{
+    R.saveTimer=null;
+    R.saveChain=R.saveChain.catch(()=>{}).then(async()=>{
+      if(Date.now()>=Date.parse(R.expiresAt))return;
+      const{error}=await sb.rpc('save_general_sim_answers',{p_run:R.runId,p_answers:R.ans});
+      if(error){R.saveError=error;throw error}
+      R.saveError=null;
+    });
+    R.saveChain.catch(e=>{if(S===R)toast('⚠️','No se sincronizó una respuesta','Comprueba tu conexión. No cierres el simulacro; volveremos a intentar al guardar.')});
+  },450);
+}
+async function flushGeneralSave(R){
+  if(R.saveTimer){clearTimeout(R.saveTimer);R.saveTimer=null}
+  await R.saveChain.catch(()=>{});
+  if(Date.now()>=Date.parse(R.expiresAt))return;
+  const{error}=await sb.rpc('save_general_sim_answers',{p_run:R.runId,p_answers:R.ans});
+  if(error)throw error;
+}
 async function finish(auto){
-  if(!S||S.sending)return;S.sending=true;clearInterval(timer);
-  const answers=Object.fromEntries(S.qs.map(q=>[q.id,S.ans[q.id]??null]));
-  const{data,error}=await sb.rpc('submit_attempt',{p_grade:S.grade,p_subject:S.subject,p_answers:answers,p_seconds_left:Math.max(0,S.left),p_auto:!!auto,p_simulacro_id:S.simId});
-  if(error){S.sending=false;return err(error)}
-  RES={...data,auto,qs:S.qs,ans:S.ans};S=null;
-  (data.new_medals||[]).forEach(k=>{const m=MEDALS[k];if(m)toast(m[0],'¡Medalla desbloqueada: '+m[1]+'!',m[2])});
-  render();
+  const R=S;if(!R||R.sending)return;
+  R.sending=true;clearInterval(timer);
+  try{
+    await flushGeneralSave(R);
+    const{data,error}=await sb.rpc('submit_general_sim',{p_run:R.runId,p_auto:!!auto});
+    if(error)throw error;
+    RES={...data,auto:!!data.auto,qs:R.qs,ans:data.ans||{}};
+    S=null;
+    render();
+  }catch(e){
+    R.sending=false;
+    if(Date.now()<Date.parse(R.expiresAt)){
+      timer=setInterval(()=>{if(!S)return;S.left=Math.max(0,Math.ceil((Date.parse(S.expiresAt)-Date.now())/1000));const el=document.getElementById('clk');if(el)el.textContent=fmt(S.left);if(S.left<=0)finish(true)},500);
+      err(e);
+    }else{
+      const{data,error}=await sb.rpc('submit_general_sim',{p_run:R.runId,p_auto:true});
+      if(error){R.sending=false;return err(error)}
+      RES={...data,auto:true,qs:R.qs,ans:data.ans||{}};S=null;render();
+    }
+  }
 }
 
 /* ---------- CSV ---------- */
@@ -834,7 +895,8 @@ function vAuth(){
     <div class="text-sm"><div class="font-semibold mb-1">Grados en los que dictas clase</div><div class="flex flex-wrap gap-3">${[6,7,8,9,10,11].map(g=>`<label class="flex items-center gap-2"><input type="checkbox" ${RG.gs.includes(g)?'checked':''} onchange="togG(${g},this.checked)"> ${g}°</label>`).join('')}</div></div>
     ${RG.gs.map(g=>`<label class="text-sm block">Cursos de ${g}° (separados por coma, ej.: A, B, C o 901, 902)<input class="w-full border rounded-lg p-2 mt-1" value="${E(RG.cur[g]||'')}" oninput="RG.cur[${g}]=this.value"></label>`).join('')}
     <label class="text-sm block">Área<select class="w-full border rounded-lg p-2 mt-1" onchange="RG.area=this.value;RG.asg=[];render()"><option value="">Elige tu área…</option>${(D.areas||[]).map(a=>`<option ${a.nombre===RG.area?'selected':''}>${E(a.nombre)}</option>`).join('')}</select></label>
-    ${RG.area?`<div class="text-sm"><div class="font-semibold mb-1">Asignatura(s) que dictas</div><div class="flex flex-wrap gap-3">${asg.map(x=>`<label class="flex items-center gap-2"><input type="checkbox" ${RG.asg.includes(x.nombre)?'checked':''} onchange="togA('${E(x.nombre)}',this.checked)"> ${E(x.nombre)}</label>`).join('')}</div></div>`:''}
+    ${RG.area&&!RG.sinAsig?`<div class="text-sm"><div class="font-semibold mb-1">Asignatura(s) que dictas</div><div class="flex flex-wrap gap-3">${asg.map(x=>`<label class="flex items-center gap-2"><input type="checkbox" ${RG.asg.includes(x.nombre)?'checked':''} onchange="togA('${E(x.nombre)}',this.checked)"> ${E(x.nombre)}</label>`).join('')}</div></div>`:''}
+    ${RG.area?`<label class="text-sm flex items-center gap-2"><input type="checkbox" ${RG.sinAsig?'checked':''} onchange="RG.sinAsig=this.checked;if(this.checked)RG.asg=[];render()"> Sin asignatura</label>`:''}
     <button onclick="doAuth()" class="w-full py-2 bg-indigo-600 text-white rounded-lg">Enviar mi registro como docente</button></div>`;
   }
   const reg=m==='register';
@@ -890,7 +952,7 @@ function vSim(){
   <button onclick="RES=null;go('sim')" class="px-5 py-2 bg-indigo-600 text-white rounded-lg">Volver a mis simulacros</button></div>`}
   if(S){const q=S.qs[S.i],im=!!q.image_path;return`<div class="bg-white rounded-2xl p-5 shadow space-y-4"><div class="flex justify-between items-center"><div><div class="text-xs text-slate-500">${E(S.title)} · ${E(S.subject)}</div><div class="font-semibold">Pregunta ${S.i+1} de ${S.qs.length}</div></div><div class="text-right"><div class="text-xs text-slate-500">Tiempo restante</div><div id="clk" class="font-mono text-2xl font-bold text-indigo-700">${fmt(S.left)}</div></div></div>
   <div class="h-2 bg-slate-200 rounded"><div class="h-2 bg-indigo-500 rounded" style="width:${S.left/S.total*100}%"></div></div>${vQBody(q,true)}
-  <div class="${im?'':'grid gap-2'}" style="${im?'display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem':''}">${q.options.map((o,k)=>`<button onclick="S.ans['${q.id}']=${k};render()" class="${im?'text-center':'text-left'} p-3 rounded-lg border ${S.ans[q.id]===k?'border-indigo-600 bg-indigo-50':'border-slate-200 hover:bg-slate-50'}"><b>${'ABCD'[k]}${im?'':'.'}</b>${im?'':' '+E(o)}</button>`).join('')}</div>
+  <div class="${im?'':'grid gap-2'}" style="${im?'display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem':''}">${q.options.map((o,k)=>`<button onclick="S.ans['${q.id}']=${k};scheduleGeneralSave(S);render()" class="${im?'text-center':'text-left'} p-3 rounded-lg border ${S.ans[q.id]===k?'border-indigo-600 bg-indigo-50':'border-slate-200 hover:bg-slate-50'}"><b>${'ABCD'[k]}${im?'':'.'}</b>${im?'':' '+E(o)}</button>`).join('')}</div>
   <div class="flex justify-between"><button ${S.i?'':'disabled'} onclick="S.i--;render()" class="px-4 py-2 rounded-lg bg-slate-200 disabled:opacity-40">← Anterior</button>${S.i<S.qs.length-1?`<button onclick="S.i++;render()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white">Siguiente →</button>`:`<button onclick="finish(false)" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">Finalizar y calificar</button>`}</div></div>`}
   if(!M.course_id)return`<div class="bg-white rounded-2xl p-6 shadow text-center space-y-2"><div class="text-4xl">🕒</div><h2 class="text-xl font-bold">Tu docente aún no te ha asignado a un curso</h2><p class="text-sm text-slate-600">Cuando lo haga, aquí verás los simulacros y las tareas de tu curso.</p></div>`;
   const av=D.avail||{},sims=(D.sims||[]).filter(s=>s.active);
@@ -934,8 +996,8 @@ function vSimP(){
   <div class="text-sm"><div class="font-semibold mb-2">Activar para los cursos de ${SF.g}°:</div>${gc.length?`<div class="flex flex-wrap gap-3">${gc.map(c=>`<label class="flex items-center gap-2"><input type="checkbox" ${SF.cs.includes(c.id)?'checked':''} onchange="togC('${c.id}',this.checked)"> ${E(c.name)}</label>`).join('')}<button onclick="allC()" class="px-3 py-1 rounded-lg bg-slate-200 text-xs">Marcar todos</button></div>`:'<p class="text-slate-500">No tienes cursos de este grado. Agrégalos en la pestaña Cursos y estudiantes.</p>'}</div>
   <p class="text-xs text-slate-500">Hay ${have} preguntas visibles en ${E(SF.s)} (${SF.g}°). Tiempo total: <b>${SF.n*SF.m} minutos</b>. Cada estudiante recibe ${SF.n} preguntas al azar.</p>
   <button onclick="createSim()" class="px-5 py-2 bg-emerald-600 text-white rounded-lg">Activar ${kn}</button></div>
-  <div class="bg-white rounded-2xl p-4 shadow space-y-3"><h3 class="font-semibold">Simulacros y tareas activados</h3>${sims.length?sims.map(s=>{const asg=(s.simulacro_targets||[]).map(t=>t.course_id),free=cs.filter(c=>c.grade===s.grade&&!asg.includes(c.id));return`<div class="border rounded-xl p-3 space-y-2 ${s.active?'':'bg-slate-100'}"><div class="flex flex-wrap items-center justify-between gap-2"><div><div class="font-semibold">${s.kind==='tarea'?'📘 Tarea':'📝 Simulacro'} · ${E(s.title)}</div><div class="text-xs text-slate-500">${s.grade}° · ${E(s.subject)} · ${s.n_questions} preguntas · ${s.minutes_per_question} min c/u · ${s.max_attempts} intento(s)${s.due_at?' · hasta '+new Date(s.due_at).toLocaleDateString('es-CO'):''} · ${s.active?'👁 Activo':'🚫 Desactivado'}</div></div><div class="flex gap-2"><button onclick="setSim('${s.id}',{active:${!s.active}})" class="px-3 py-1.5 rounded-lg ${s.active?'bg-slate-200':'bg-emerald-600 text-white'} text-xs">${s.active?'Desactivar':'Activar'}</button><button onclick="delSim('${s.id}','${E(s.title).replace(/'/g,'')}')" class="px-3 py-1.5 rounded-lg bg-slate-200 text-xs">Borrar</button></div></div>
-  <div class="flex flex-wrap items-center gap-2 text-xs"><span class="text-slate-500">Cursos:</span>${asg.length?asg.map(id=>`<span class="px-3 py-1 rounded-lg bg-indigo-50 border border-indigo-600">${E((cs.find(c=>c.id===id)||{name:'?'}).name)} <a href="#" onclick="delT('${s.id}','${id}');return false" class="text-red-600">✕</a></span>`).join(''):'<span class="text-red-600">Sin cursos: nadie lo ve</span>'}${free.length?`<select id="add_${s.id}" class="border rounded-lg p-2"><option value="">Agregar curso…</option>${free.map(c=>`<option value="${c.id}">${E(c.name)}</option>`).join('')}</select><button onclick="addT('${s.id}')" class="px-3 py-1.5 rounded-lg bg-slate-200">Agregar</button>`:''}</div></div>`}).join(''):'<p class="text-sm text-slate-500">Aún no has activado ninguno.</p>'}</div></div>`}
+  <div class="bg-white rounded-2xl p-4 shadow space-y-3"><h3 class="font-semibold">Simulacros y tareas activados</h3>${sims.length?sims.map(s=>{const asg=(s.simulacro_targets||[]).map(t=>t.course_id),free=cs.filter(c=>c.grade===s.grade&&!asg.includes(c.id)),aa=(D.simAttempts||[]).filter(a=>a.simulacro_id===s.id),unique=[...new Set(aa.map(a=>a.user_id))].length,mean=aa.length?Math.round(aa.reduce((n,a)=>n+Number(a.score||0),0)/aa.length):null,byStudent=Object.values(aa.reduce((o,a)=>{const k=a.user_id;if(!o[k])o[k]={name:a.profiles?.full_name||'Estudiante',n:0,best:0,last:null};o[k].n++;o[k].best=Math.max(o[k].best,Number(a.score||0));if(!o[k].last||a.created_at>o[k].last)o[k].last=a.created_at;return o},{}));return`<div class="border rounded-xl p-3 space-y-2 ${s.active?'':'bg-slate-100'}"><div class="flex flex-wrap items-center justify-between gap-2"><div><div class="font-semibold">${s.kind==='tarea'?'📘 Tarea':'📝 Simulacro'} · ${E(s.title)}</div><div class="text-xs text-slate-500">${s.grade}° · ${E(s.subject)} · ${s.n_questions} preguntas · ${s.minutes_per_question} min c/u · ${s.max_attempts} intento(s)${s.due_at?' · hasta '+new Date(s.due_at).toLocaleDateString('es-CO'):''} · ${s.active?'👁 Activo':'🚫 Desactivado'}</div></div><div class="flex gap-2"><button onclick="setSim('${s.id}',{active:${!s.active}})" class="px-3 py-1.5 rounded-lg ${s.active?'bg-slate-200':'bg-emerald-600 text-white'} text-xs">${s.active?'Desactivar':'Activar'}</button><button onclick="delSim('${s.id}','${E(s.title).replace(/'/g,'')}')" class="px-3 py-1.5 rounded-lg bg-slate-200 text-xs">Borrar</button></div></div>
+  <div class="flex flex-wrap items-center gap-2 text-xs"><span class="text-slate-500">Cursos:</span>${asg.length?asg.map(id=>`<span class="px-3 py-1 rounded-lg bg-indigo-50 border border-indigo-600">${E((cs.find(c=>c.id===id)||{name:'?'}).name)} <a href="#" onclick="delT('${s.id}','${id}');return false" class="text-red-600">✕</a></span>`).join(''):'<span class="text-red-600">Sin cursos: nadie lo ve</span>'}${free.length?`<select id="add_${s.id}" class="border rounded-lg p-2"><option value="">Agregar curso…</option>${free.map(c=>`<option value="${c.id}">${E(c.name)}</option>`).join('')}</select><button onclick="addT('${s.id}')" class="px-3 py-1.5 rounded-lg bg-slate-200">Agregar</button>`:''}</div>${aa.length?`<div class="rounded-lg bg-slate-50 border p-3 space-y-2"><div class="grid grid-cols-3 gap-2 text-center text-xs"><div><b class="block text-lg">${aa.length}</b>Intentos</div><div><b class="block text-lg">${unique}</b>Participantes</div><div><b class="block text-lg">${mean}/100</b>Promedio</div></div><div class="text-xs font-semibold">Seguimiento por estudiante</div><div class="overflow-x-auto"><table class="w-full text-xs"><tr class="text-left text-slate-500"><th>Estudiante</th><th>Intentos</th><th>Mejor</th><th>Último envío</th></tr>${byStudent.sort((a,b)=>b.best-a.best).slice(0,12).map(x=>`<tr class="border-t"><td>${E(x.name)}</td><td>${x.n}</td><td class="font-semibold">${x.best}</td><td>${new Date(x.last).toLocaleDateString('es-CO')}</td></tr>`).join('')}</table></div></div>`:`<p class="text-xs text-slate-500">Aún no hay intentos entregados.</p>`}</div></div>`}).join(''):'<p class="text-sm text-slate-500">Aún no has activado ninguno.</p>'}</div></div>`}
 function vMed(){const md=D.medals||{};return`<div class="bg-white rounded-2xl p-6 shadow"><h2 class="text-xl font-bold mb-4">🏆 Panel de trofeos</h2><div class="grid sm:grid-cols-3 gap-3">${Object.entries(MEDALS).map(([k,m])=>{const on=md[k];return`<div class="p-4 rounded-xl border text-center ${on?'bg-amber-50 border-amber-300':'bg-slate-50 opacity-60'}"><div class="text-4xl ${on?'':'grayscale'}">${m[0]}</div><div class="font-semibold mt-1">${m[1]}</div><div class="text-xs text-slate-600">${m[2]}</div><div class="text-xs mt-1">${on?'✅ '+new Date(on).toLocaleDateString('es-CO'):'🔒 Bloqueada'}</div></div>`}).join('')}</div></div>`}
 function vEst(){return(D.mine||[]).length?`<div class="grid md:grid-cols-2 gap-4"><div class="bg-white rounded-2xl p-4 shadow"><h3 class="font-semibold mb-2">Rendimiento por materia</h3><canvas id="c1"></canvas></div><div class="bg-white rounded-2xl p-4 shadow"><h3 class="font-semibold mb-2">Evolución de puntajes</h3><canvas id="c2"></canvas></div></div>`:`<div class="bg-white rounded-2xl p-6 shadow text-center text-slate-600">Aún no tienes intentos. ¡Presenta tu primer simulacro!</div>`}
 function vLb(){return`<div class="bg-white rounded-2xl p-4 shadow"><h3 class="font-semibold mb-2">🏅 Leaderboard${M.role==='prof'?' de tus estudiantes':' de tu curso'}</h3><table class="w-full text-sm"><tr class="text-left text-slate-500"><th>#</th><th>Estudiante</th><th>Grado</th><th>Prom.</th></tr>${(D.lb||[]).map((r,i)=>`<tr class="border-t"><td>${['🥇','🥈','🥉'][i]||i+1}</td><td>${E(r.full_name)}</td><td>${r.grade??''}°</td><td class="font-bold">${r.avg_score}</td></tr>`).join('')}</table></div>`}
@@ -984,7 +1046,7 @@ function render(){
   if(isDir()&&M.teacher_status!=='aprobado'){root.innerHTML=vPendDir();return}
   const prof=M.role==='prof';
   const tabs=isDir()?dirTabs():prof?[['prof','📊 Panel'],...(M.is_admin?[['doc','👩‍🏫 Docentes'+(D.pend?' ('+D.pend+')':'')],['dadm','🏫 Rectores y coordinadores'+(D.pendDir?' ('+D.pendDir+')':'')],['catalogo','🎓 Catálogo académico'],['banco','📦 Banco (paquetes)']]:[]),['cur','👥 Cursos y estudiantes'],['simp','🚀 Simulacros y tareas'],['imp','🖨️ Imprimir'],['cal','📷 Calificar'],['preg','📚 Preguntas'],['subirp','📥 Subir preguntas'],['clase','🎥 Clase'],['taller','📝 Talleres'],['aclase','✋ Asistencia a clase'],['asis','🕒 Mi asistencia'],['mhor','🗓 Mi horario']]:[['sim','📝 Mis simulacros y tareas'],...(window.VMODE&&VMODE.on()?[['periodo','🧾 Exámenes virtuales'],['virtual','📎 Trabajos y entregas'],['clase','🎥 Clase virtual']]:[]),['guias','📎 Guías de trabajo'],['est','📊 Mis estadísticas'],['med','🏆 Logros'],['lb','🏅 Ranking']];
-  const body=({sim:vSim,simp:vSimP,cur:vCur,imp:vImp,cal:vCal,doc:vDoc,est:vEst,med:vMed,prof:vProf,perfil:()=>window.AulaDashboard?AulaDashboard.perfil(M,D.email):'',saber:()=>window.SABER?SABER.view():'',periodo:()=>window.PER?PER.view(false):'',saberimp:()=>window.SIMP?SIMP.view():'',asis:()=>window.ASIS?ASIS.view():'',aclase:()=>window.ACL?ACL.view():'',asistencias:()=>window.ACL?ACL.view():'',subirp:()=>window.SUBP?SUBP.view():'',catalogo:()=>window.CATALOGO?CATALOGO.view():'',planeador:()=>window.PLN?PLN.view():'',diario:()=>window.PLN?PLN.view():'',taller:()=>window.TAL?TAL.view():'',msgs:()=>window.MSG?MSG.view():'',listas:()=>window.LST?LST.view():'',guias:()=>window.GUI?GUI.view('guias'):'',guiasadm:()=>window.GUI?GUI.view('guiasadm'):'',bancoia:()=>window.BIA?BIA.view():'',claseia:()=>window.CIA?CIA.view():'',talleria:()=>window.TIA?TIA.view():'',reun:()=>window.REU?REU.view():'',permisos:()=>window.PERM?PERM.view():'',diag:()=>window.SIMP?SIMP.view():'',virtual:()=>window.VIRT?VIRT.view():'',plan:()=>window.DOCP?DOCP.view('plan'):'',diario:()=>window.DOCP?DOCP.view('diario'):'',preg:vPreg,clase:vClase,lb:vLb}[tab]||(()=>tab==='banco'?(window.BANCO?BANCO.view():''):['dhor','mhor'].includes(tab)?(window.HZUI?HZUI.view(tab):''):window.DIR?DIR.view(tab):''))();
+  const body=({institucional:()=>window.INST?INST.view():'',sim:vSim,simp:vSimP,cur:vCur,imp:vImp,cal:vCal,doc:vDoc,est:vEst,med:vMed,prof:vProf,perfil:()=>window.AulaDashboard?AulaDashboard.perfil(M,D.email):'',saber:()=>window.SABER?SABER.view():'',periodo:()=>window.PER?PER.view(false):'',saberimp:()=>window.SIMP?SIMP.view():'',asis:()=>window.ASIS?ASIS.view():'',aclase:()=>window.ACL?ACL.view():'',asistencias:()=>window.ACL?ACL.view():'',subirp:()=>window.SUBP?SUBP.view():'',catalogo:()=>window.CATALOGO?CATALOGO.view():'',planeador:()=>window.PLN?PLN.view():'',diario:()=>window.PLN?PLN.view():'',taller:()=>window.TAL?TAL.view():'',msgs:()=>window.MSG?MSG.view():'',listas:()=>window.LST?LST.view():'',guias:()=>window.GUI?GUI.view('guias'):'',guiasadm:()=>window.GUI?GUI.view('guiasadm'):'',bancoia:()=>window.BIA?BIA.view():'',claseia:()=>window.CIA?CIA.view():'',talleria:()=>window.TIA?TIA.view():'',reun:()=>window.REU?REU.view():'',permisos:()=>window.PERM?PERM.view():'',diag:()=>window.SIMP?SIMP.view():'',virtual:()=>window.VIRT?VIRT.view():'',plan:()=>window.DOCP?DOCP.view('plan'):'',diario:()=>window.DOCP?DOCP.view('diario'):'',preg:vPreg,clase:vClase,lb:vLb}[tab]||(()=>tab==='banco'?(window.BANCO?BANCO.view():''):['dhor','mhor'].includes(tab)?(window.HZUI?HZUI.view(tab):''):window.DIR?DIR.view(tab):''))();
   if((prof||isDir())&&window.AulaDashboard){
     root.innerHTML=AulaDashboard.shell(D,M,tab,body,vLive(),{doc:D.pend,dir:D.pendDir});
   }else root.innerHTML=`<header class="flex flex-wrap gap-3 justify-between items-center mb-4"><div><h1 class="text-2xl font-extrabold"><img src="aula360-logo-horizontal.png" alt="AULA360" style="height:46px;width:auto;object-fit:contain"></h1><p class="text-xs text-slate-500">${E(M.full_name)} · ${isDir()?(M.role==='rector'?'Rector':'Coordinador'):prof?(M.is_admin?'Administrador':'Docente'+((M.asignaturas||[]).length?' · '+E(M.asignaturas.join(', ')):'')):'Estudiante'+(M.grade?' · '+M.grade+'°':'')}</p></div><div class="flex gap-2"><button onclick="passModal()" class="text-sm px-3 py-1.5 bg-white rounded-lg shadow">🔑 Contraseña</button><button onclick="logout()" class="text-sm px-3 py-1.5 bg-white rounded-lg shadow">Salir</button></div></header>
@@ -996,7 +1058,7 @@ function render(){
   const by=l=>{const m={};l.forEach(a=>(m[a.subject]=m[a.subject]||[]).push(a.score));return Object.entries(m).map(([k,x])=>[k,avg(x)])};
   if(tab==='est'&&(D.mine||[]).length){const sj=by(D.mine);charts.push(new Chart(document.getElementById('c1'),{type:'bar',data:{labels:sj.map(x=>x[0]),datasets:[{data:sj.map(x=>x[1]),backgroundColor:sj.map(x=>x[1]>=70?'#10b981':x[1]>=50?'#f59e0b':'#ef4444')}]},options:{scales:{y:{min:0,max:100}},plugins:{legend:{display:false}}}}));charts.push(new Chart(document.getElementById('c2'),{type:'line',data:{labels:D.mine.map((a,i)=>'#'+(i+1)),datasets:[{label:'Puntaje',data:D.mine.map(a=>a.score),borderColor:'#4f46e5',tension:.3}]},options:{scales:{y:{min:0,max:100}}}}))}
 }
-boot();
+if(sb)boot();else toast('⚠️','No se pudo conectar','No se cargó el servicio de acceso. Recarga la página o revisa tu conexión.');
 </script>
 <script src="dashboard.js?v=16"></script>
 <script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
