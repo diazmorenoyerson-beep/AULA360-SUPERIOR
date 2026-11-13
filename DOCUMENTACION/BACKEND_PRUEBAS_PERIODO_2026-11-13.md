@@ -114,3 +114,13 @@ Verificación técnica: la columna existe, las tres RPC tienen permisos autentic
 - Migraciones: `database/2026-11-13_saber_imp_competency_analytics.sql` `database/2026-11-13_fix_saber_imp_competency_report_auth.sql` (ajuste de autorización del RPC de resultados) y `database/2026-11-13_harden_saber_imp_competency_search_path.sql` (search_path vacío en ambas RPC).
 
 - Verificación final de seguridad: ambas RPC tienen `search_path` vacío, ejecución anónima revocada y ejecución autenticada concedida.
+
+
+## Informe institucional por competencias (2026-11-13)
+
+- Se creó `informe_competencias_institucional()` para consolidar competencias de resultados impresos y diagnósticos por evaluación y curso, con alcance por docente propietario o rector/coordinador del colegio.
+- La función usa `SECURITY DEFINER`, `search_path` vacío, requiere usuario aprobado y revoca ejecución a `public` y `anon`; concede ejecución a `authenticated`.
+- `institucional.js` consulta este RPC junto con `informe_institucional()` y muestra una tabla separada de competencias, con aciertos, preguntas, participantes y nivel de dominio. También incorpora esos registros a la exportación CSV.
+- La sección mantiene separadas las escalas de pruebas de periodo y de simulacros; no calcula ni presenta puntajes ICFES oficiales.
+- Migración: `database/2026-11-13_institutional_competency_analytics.sql`.
+- La vista se alimenta de `saber_imp_results.por_competencia`; no habrá valores hasta que existan hojas calificadas con preguntas clasificadas en el campo `questions.competency`.
