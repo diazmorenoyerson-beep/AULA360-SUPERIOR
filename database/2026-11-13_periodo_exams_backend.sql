@@ -52,6 +52,7 @@ begin
 end $;
 create index if not exists periodo_pruebas_teacher_idx on public.periodo_pruebas(teacher_id,created_at desc);
 create index if not exists periodo_targets_course_idx on public.periodo_targets(course_id,prueba_id);
+create index if not exists periodo_items_question_id_idx on public.periodo_items(question_id);
 create index if not exists periodo_intentos_student_idx on public.periodo_intentos(user_id,prueba_id,created_at desc);
 create index if not exists periodo_intentos_test_idx on public.periodo_intentos(prueba_id,created_at desc);
 create unique index if not exists periodo_intentos_one_active_idx on public.periodo_intentos(prueba_id,user_id) where submitted_at is null;
