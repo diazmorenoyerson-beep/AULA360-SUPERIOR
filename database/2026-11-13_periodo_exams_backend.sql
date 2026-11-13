@@ -263,3 +263,6 @@ grant execute on function public.periodo_banco(text,smallint) to authenticated;
 grant execute on function public.periodo_preguntas(uuid) to authenticated;
 grant execute on function public.periodo_guardar_respuestas(uuid,jsonb) to authenticated;
 grant execute on function public.periodo_enviar(uuid,jsonb,integer) to authenticated;
+-- Estas funciones solo se invocan como triggers; no deben exponerse como RPC.
+revoke all on function public.periodo_guard_publish() from public,anon,authenticated;
+revoke all on function public.periodo_set_owner() from public,anon,authenticated;
