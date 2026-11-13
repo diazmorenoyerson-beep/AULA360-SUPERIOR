@@ -124,3 +124,13 @@ Verificación técnica: la columna existe, las tres RPC tienen permisos autentic
 - La sección mantiene separadas las escalas de pruebas de periodo y de simulacros; no calcula ni presenta puntajes ICFES oficiales.
 - Migración: `database/2026-11-13_institutional_competency_analytics.sql`.
 - La vista se alimenta de `saber_imp_results.por_competencia`; no habrá valores hasta que existan hojas calificadas con preguntas clasificadas en el campo `questions.competency`.
+
+
+## Simulacros generales en el informe institucional (2026-11-13)
+
+- Se creó `informe_simulacros_generales()` para consultar intentos entregados de la tabla `attempts`, relacionados con `simulacros` y sus cursos destinatarios.
+- El alcance del docente se limita a sus simulacros y cursos; rector/coordinador consulta simulacros asignados a cursos de su colegio. Solo se incluyen estudiantes aprobados del curso correspondiente.
+- El informe muestra matriculados, participantes, cobertura, pendientes, número de intentos, promedio de nota porcentual y seguimiento individual con aciertos, preguntas, promedio, mejor y última nota.
+- La función usa `SECURITY DEFINER`, `search_path` vacío, exige autenticación y rol aprobado, revoca `public`/`anon` y concede `authenticated`.
+- `institucional.js` incorpora la sección y la exportación CSV. Mantiene separadas las escalas de periodo, Saber 11 y simulacros generales.
+- Migración: `database/2026-11-13_institutional_general_simulations_report.sql`.
