@@ -12,7 +12,7 @@
   const sourceKeys=['periodo','saber_online','simulacros_generales','impresos','diagnosticos'];
   function matches(x){
     const course=String(x.course||'');
-    const hay=[x.title,x.course,x.subject,x.grade,x.period,...(x.students||[]).map(z=>z.student)].join(' ').toLocaleLowerCase('es');
+    const hay=[x.title,x.course,x.subject,x.competency,x.grade,x.period,...(x.students||[]).map(z=>z.student)].join(' ').toLocaleLowerCase('es');
     return (filters.course==='all'||course===filters.course)&&(!filters.query||hay.includes(filters.query.toLocaleLowerCase('es')));
   }
   function filteredRows(key){return rowsFor(key).filter(matches)}
