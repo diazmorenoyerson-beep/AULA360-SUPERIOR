@@ -62,3 +62,12 @@ La auditoría previa encontró 23 nombres de tablas usados por frontend que no e
 ## Estado actual
 
 Este documento es el mapa de construcción y dependencias, no una declaración de finalización. Los siguientes cambios deben ser implementaciones ejecutables módulo por módulo, con migraciones y pruebas verificables.
+
+
+## Actualización 2026-11-13 — continuación
+
+- **Fondos visuales globales:** corregido el origen real del fondo en `styles.css`; fotografías educativas CC0 de Wikimedia Commons en el fondo general y en el espacio de trabajo, con paneles translúcidos para lectura. Caché PWA actualizada.
+- **Informe institucional:** exportación CSV ahora respeta fuente, curso y búsqueda activos; texto corregido a cinco fuentes.
+- **Resultados impresos:** endurecida la política RLS de `saber_imp_results`; escritura directa de cliente revocada, guardado centralizado en RPC.
+- **Aula virtual / trabajos y entregas:** backend de cinco tablas, RLS, dos buckets privados y cuatro RPC creado y aplicado. Frontend actualizado para limpieza de archivos al fallar una carga.
+- **Pendiente de validación funcional:** el proyecto Supabase solo tiene un perfil rector y cero cursos; falta crear cuentas y curso de prueba para ejecutar flujos reales de docente/estudiante. No promover como QA completo hasta realizar esa prueba.
