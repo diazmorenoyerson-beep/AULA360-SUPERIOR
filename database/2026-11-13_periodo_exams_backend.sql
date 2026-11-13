@@ -44,6 +44,12 @@ create table if not exists public.periodo_intentos (
  automatic boolean not null default false,
  created_at timestamptz not null default now()
 );
+do $
+begin
+ if not exists(select 1 from pg_constraint where conrelid='public.periodo_intentos'::regclass and conname='periodo_intentos_user_profile_fkey') then
+  alter table public.periodo_intentos add constraint periodo_intentos_user_profile_fkey foreign key(user_id) references public.profiles(id) on delete cascade;
+ end if;
+end $;
 create index if not exists periodo_pruebas_teacher_idx on public.periodo_pruebas(teacher_id,created_at desc);
 create index if not exists periodo_targets_course_idx on public.periodo_targets(course_id,prueba_id);
 create index if not exists periodo_intentos_student_idx on public.periodo_intentos(user_id,prueba_id,created_at desc);
