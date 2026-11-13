@@ -11,9 +11,12 @@
   async function load(){
     loading=true;error='';render();
     try{
-      const r=await sb.rpc('informe_institucional');
+      const [r,cr]=await Promise.all([sb.rpc('informe_institucional'),sb.rpc('informe_competencias_institucional')]);
       if(r.error)throw r.error;
-      data=r.data||{};expanded.clear();
+      if(cr.error)throw cr.error;
+      data=r.data||{};
+      data.competencies=cr.data?.competencies||[];
+      expanded.clear();
     }catch(e){error=e?.message||String(e);data=null}
     finally{loading=false;render()}
   }
@@ -56,8 +59,16 @@
     return '<section style="margin-top:20px"><div class="aic-section-head"><div><h2>'+title+'</h2><p>'+desc+'</p></div><span class="aic-period">'+list.length+' registros curso-evaluación</span></div>'+
       (list.length?list.map(x=>studentTable(x,key)).join(''):'<div class="aic-card aic-empty" style="padding:20px"><b>Aún no hay resultados registrados en esta fuente</b><p>Cuando se publiquen evaluaciones y se registren entregas, aparecerán aquí.</p></div>')+'</section>';
   }
+  function competencySection(){
+    const rows=Array.isArray(data?.competencies)?data.competencies:[];
+    const groups=new Map();
+    rows.forEach(x=>{const k=x.test_id+':'+x.course_id;const g=groups.get(k)||{title:x.title,kind:x.kind,course:x.course,grade:x.grade,date:x.exam_date,items:[]};g.items.push(x);groups.set(k,g)});
+    return '<section style="margin-top:20px"><div class="aic-section-head"><div><h2>Análisis por competencias</h2><p>Desglose de simulacros impresos y diagnósticos; no mezcla resultados de pruebas online ni escalas distintas.</p></div><span class="aic-period">'+rows.length+' competencias evaluadas</span></div>'+
+      (groups.size?[...groups.values()].map(g=>'<article class="aic-card" style="padding:14px;margin:10px 0"><b>'+esc(g.title)+'</b><div style="font-size:12px;color:#64748b;margin:3px 0 10px">'+esc(g.course)+' · '+esc(g.grade)+'° · '+(g.kind==='diagnostico'?'Diagnóstico':'Simulacro impreso')+(g.date?' · '+date(g.date):'')+'</div><div class="aic-table-wrap"><table><thead><tr><th>COMPETENCIA</th><th>ACIERTOS</th><th>PREGUNTAS</th><th>ESTUDIANTES</th><th>DOMINIO</th><th>ORIENTACIÓN</th></tr></thead><tbody>'+g.items.sort((a,b)=>Number(a.pct??100)-Number(b.pct??100)).map(x=>{const n=Number(x.pct||0),level=n<40?'Prioridad alta':n<60?'Requiere refuerzo':n<80?'En desarrollo':'Fortaleza';return '<tr><td><b>'+esc(x.competency)+'</b></td><td>'+num(x.correct)+'</td><td>'+num(x.total)+'</td><td>'+num(x.students)+'</td><td><b>'+pct(x.pct)+'</b></td><td>'+level+'</td></tr>'}).join('')+'</tbody></table></div></article>').join(''):'<div class="aic-card aic-empty" style="padding:20px"><b>Sin competencias clasificadas en resultados</b><p>Este informe aparecerá cuando se califiquen hojas con preguntas que tengan una competencia registrada en el banco.</p></div>')+'</section>';
+  }
   function exportCsv(){
     const rows=[['fuente','evaluacion','curso','grado','estudiante','intentos_hojas','correctas','preguntas','porcentaje_aciertos','mejor_nota_100','ultima_nota_100','fecha']];
+    for(const x of (data?.competencies||[])){rows.push(['Análisis por competencia',x.title,x.course,x.grade,x.competency,'',x.correct,x.total,x.pct??'', '', '',x.exam_date??''])}
     for(const key of ['periodo','saber_online','impresos','diagnosticos']){
       const label={periodo:'Prueba de periodo',saber_online:'Saber 11 en línea',impresos:'Simulacro impreso',diagnosticos:'Diagnóstico'}[key];
       for(const x of rowsFor(key))for(const s of (x.students||[])){
@@ -81,6 +92,7 @@
       section('saber_online','Simulacros Saber 11 en línea','Participación y porcentaje de respuestas correctas por estudiante')+
       section('impresos','Simulacros Saber 11 impresos','Hojas calificadas y resultados consolidados por estudiante')+
       section('diagnosticos','Diagnósticos por grupo','Resultados de las hojas de diagnóstico y áreas evaluadas')+
+      competencySection()+
       '<footer class="aic-footer"><b>AULA360</b> · Informe calculado con registros reales de la base de datos.</footer></div>';
   }
   function toggle(id){expanded.has(id)?expanded.delete(id):expanded.add(id);render()}
