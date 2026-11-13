@@ -6,7 +6,7 @@ El módulo general de simulacros (distinto de Saber 11) cuenta ahora con:
 - Asignación de evaluaciones a cursos propiedad del docente.
 - Inicio de sesión de examen en servidor, selección aleatoria de preguntas publicadas con clave válida y reloj con vencimiento persistido.
 - Reanudación de una sesión activa sin reiniciar el reloj.
-- Guardado de respuestas en servidor; el envío califica exclusivamente el snapshot guardado en servidor.
+- Guardado de respuestas en servidor; el envío califica exclusivamente el snapshot guardado en servidor y vuelve a validar que las claves sigan siendo válidas al calificar.
 - Cálculo de nota, aciertos, tiempo usado y envío automático por vencimiento.
 - Conteo de cobertura del banco limitado al grado/asignaturas del docente o al curso del estudiante (`avail_counts`).
 - Panel docente con intentos, participantes, promedio y mejor resultado por estudiante.
@@ -28,6 +28,7 @@ Las funciones tienen `search_path=''`, comprueban `auth.uid()`, y sus permisos E
 - `database/2026-11-13_general_simulation_followup_fixes.sql`
 - `database/2026-11-13_secure_question_availability_counts.sql`
 - `database/2026-11-13_general_simulation_policy_consolidation.sql`
+- `database/2026-11-13_validate_general_sim_keys_at_submit.sql`
 
 ## Verificación y límites conocidos
 - Confirmado en Supabase: las cuatro tablas existen con RLS habilitado.
