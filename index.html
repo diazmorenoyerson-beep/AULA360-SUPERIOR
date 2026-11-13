@@ -161,9 +161,15 @@ async function doAuth(){
   }
   if(!email||!password)return toast('⚠️','Faltan datos',authMode==='register'?'Escribe tu documento y tu correo.':'Escribe correo y contraseña.');
   if(authMode==='login'){
-    const{error}=await sb.auth.signInWithPassword({email,password});
-    if(error){const m=(error.message||'').toLowerCase();return toast('⚠️','No se pudo entrar',m.includes('not confirmed')?'Tu correo aún no está confirmado. Usa «Reenviar correo de confirmación».':m.includes('invalid login')?'Correo o contraseña incorrectos.':error.message)}
-    return boot();
+    const btn=document.querySelector('button[onclick="doAuth()"]');
+    if(btn){btn.disabled=true;btn.textContent='Verificando…'}
+    try{
+      const{error}=await sb.auth.signInWithPassword({email:email.trim(),password});
+      if(error){const m=(error.message||'').toLowerCase();toast('⚠️','No se pudo entrar',m.includes('not confirmed')?'Tu correo aún no está confirmado. Usa «Reenviar correo de confirmación».':m.includes('invalid login')?'Correo o contraseña incorrectos.':error.message);return}
+      await boot();
+    }catch(e){toast('⚠️','Error de conexión',e?.message||'No fue posible comunicarse con Supabase. Revisa tu conexión e inténtalo de nuevo.')}
+    finally{if(btn){btn.disabled=false;btn.textContent='Entrar'}}
+    return;
   }
   const full_name=v('nm'),grade=v('gr');
   if(!full_name)return toast('⚠️','Falta tu nombre','Escribe tu nombre completo.');
