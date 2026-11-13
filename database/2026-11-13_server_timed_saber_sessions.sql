@@ -115,3 +115,8 @@ $q$,'');
     execute d;
   end if;
 end $$;
+
+
+-- La apertura de sesiones es exclusiva de usuarios autenticados.
+revoke all on function public.saber_begin_session(uuid,integer) from public,anon;
+grant execute on function public.saber_begin_session(uuid,integer) to authenticated;
