@@ -936,3 +936,28 @@ body{
     transition:none!important;
   }
 }
+
+
+/* AULA360 PREMIUM · acabado 3D coherente en acciones principales de evaluaciones */
+#app button.aic-btn-3d{
+  position:relative;
+  border:1px solid rgba(255,255,255,.28)!important;
+  border-bottom:4px solid rgba(12,35,91,.38)!important;
+  background-image:linear-gradient(180deg,#5d91ff 0%,#2864e8 52%,#1749b8 100%)!important;
+  color:#fff!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 0 rgba(17,49,110,.13),0 9px 17px rgba(30,82,170,.17)!important;
+  transition:transform .14s ease,box-shadow .14s ease,filter .14s ease!important;
+  text-shadow:0 1px 1px rgba(0,0,0,.12);
+}
+#app button.aic-btn-3d:hover:not(:disabled){
+  transform:translateY(-2px);
+  filter:brightness(1.05);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 0 rgba(17,49,110,.13),0 13px 22px rgba(30,82,170,.22)!important;
+}
+#app button.aic-btn-3d:active:not(:disabled){
+  transform:translateY(3px);
+  border-bottom-width:1px!important;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.18),0 1px 2px rgba(17,49,110,.12)!important;
+}
+#app button.aic-btn-3d:disabled{filter:saturate(.5);box-shadow:none!important}
+@media(prefers-reduced-motion:reduce){#app button.aic-btn-3d{transition:none!important}}
