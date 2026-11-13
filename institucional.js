@@ -56,7 +56,7 @@
     const body=students.map(s=>'<tr><td><b>'+esc(s.student||'Estudiante')+'</b></td>'+
       (isPeriodo?'<td>'+num(s.attempts)+'</td><td>'+num(s.best_score)+'</td><td>'+num(s.latest_score)+'</td><td>'+date(s.latest_submitted_at)+'</td><td>'+(s.automatic?'Automática':'Normal')+'</td>'
       :'<td>'+num(isOnline||isGeneral?s.attempts:s.sheets)+'</td><td>'+num(s.correct)+'</td><td>'+num(s.total)+'</td><td><b>'+pct(s.pct)+'</b></td><td>'+date(s.last_at)+'</td>')+'</tr>').join('');
-    const avg=isPeriodo||isGeneral?num(isPeriodo?x.average_score:x.average_pct):pct(x.average_pct);
+    const avg=isPeriodo?num(x.average_score):pct(x.average_pct);
     const coverage=Number(x.enrolled)>0?Number(x.participants||0)/Number(x.enrolled)*100:null;
     const pending=Math.max(0,Number(x.enrolled||0)-Number(x.participants||0));
     const attempts=isPeriodo||isOnline||isGeneral?num(x.attempts):num(x.sheets);
