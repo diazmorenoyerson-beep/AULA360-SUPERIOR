@@ -44,7 +44,8 @@
       '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:13px">'+
       '<span><small style="color:#64748b">Matriculados</small><br><b>'+num(x.enrolled)+'</b></span>'+
       '<span><small style="color:#64748b">Participantes</small><br><b>'+num(x.participants)+'</b></span>'+
-      '<span><small style="color:#64748b">Cobertura</small><br><b>'+pct(coverage)+'</b></span>'+\n      '<span><small style="color:#64748b">Pendientes</small><br><b>'+num(pending)+'</b></span>'+
+      '<span><small style="color:#64748b">Cobertura</small><br><b>'+pct(coverage)+'</b></span>'+
+      '<span><small style="color:#64748b">Pendientes</small><br><b>'+num(pending)+'</b></span>'+
       '<span><small style="color:#64748b">'+label+'</small><br><b>'+attempts+'</b></span>'+
       '<span><small style="color:#64748b">'+(isPeriodo?'Promedio de nota / 100':'Promedio de aciertos')+'</small><br><b>'+avg+(isPeriodo?'':'')+'</b></span></div>'+
       (open?'<div class="aic-table-wrap" style="margin-top:12px"><table><thead><tr>'+cols+'</tr></thead><tbody>'+(body||'<tr><td colspan="6">No hay estudiantes con entregas calificadas.</td></tr>')+'</tbody></table></div>':'')+
