@@ -57,6 +57,16 @@ class ImportIcfesTests(unittest.TestCase):
         self.assertEqual(item["evaluated_count"], 25)
         self.assertIsNone(item["average_global"])
 
+    def test_transform_rejects_missing_required_area_average(self):
+        for field in ("PROM_LECTURA_CRITICA", "PROM_MATEMATICAS",
+                      "PROM_SOCIALES_CIUDADANAS", "PROM_CIENCIAS_NATURALES",
+                      "PROM_INGLES"):
+            with self.subTest(field=field):
+                row = self.sample()
+                row[field] = ""
+                with self.assertRaisesRegex(ValueError, "promedio obligatorio"):
+                    transform(row, "2025-1", False)
+
     def test_global_average_is_not_derived(self):
         item = transform(self.sample(), "2025-1", False)
         self.assertIsNone(item["average_global"])
