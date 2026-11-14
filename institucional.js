@@ -81,6 +81,41 @@
     return '<section style="margin-top:20px"><div class="aic-section-head"><div><h2>'+title+'</h2><p>'+desc+'</p></div><span class="aic-period">'+list.length+' registros curso-evaluación</span></div>'+
       (list.length?list.map(x=>studentTable(x,key)).join(''):'<div class="aic-card aic-empty" style="padding:20px"><b>Aún no hay resultados registrados en esta fuente</b><p>Cuando se publiquen evaluaciones y se registren entregas, aparecerán aquí.</p></div>')+'</section>';
   }
+  function rankingSection(){
+    if(!data)return '';
+    const keys=['periodo','saber_online','simulacros_generales','impresos','diagnosticos'];
+    const sourceNames={periodo:'Pruebas de periodo',saber_online:'Saber 11 en línea',simulacros_generales:'Simulacros generales',impresos:'Simulacros impresos',diagnosticos:'Diagnósticos'};
+    const byTest=new Map();
+    keys.forEach(key=>{
+      if(filters.source!=='all'&&filters.source!==key)return;
+      filteredRows(key).forEach(x=>{
+        const k=key+':'+String(x.test_id||x.title||'evaluacion');
+        if(!byTest.has(k))byTest.set(k,{key,title:x.title||'Evaluación',rows:[]});
+        byTest.get(k).rows.push(x);
+      });
+    });
+    const groups=[...byTest.values()].filter(g=>g.rows.length).map(g=>{
+      const periodo=g.key==='periodo';
+      const ranked=[...g.rows].sort((a,b)=>Number(periodo?b.average_score:b.average_pct)-Number(periodo?a.average_score:a.average_pct));
+      return {...g,ranked,periodo};
+    });
+    return '<section style="margin:18px 0 22px"><div class="aic-section-head"><div><h2>🏆 Ranking de resultados AULA360</h2><p>Comparativo de cursos y estudiantes dentro de cada evaluación, con datos registrados en esta institución. No mezcla pruebas diferentes ni presenta estos resultados como puntajes oficiales del ICFES.</p></div><span class="aic-period">'+groups.length+' evaluaciones comparables</span></div>'+
+      (groups.length?groups.map(g=>{
+        const top=g.ranked.slice(0,3);
+        const rows=g.ranked.map((x,i)=>{
+          const avg=g.periodo?Number(x.average_score||0):Number(x.average_pct||0);
+          const participants=Number(x.participants||0),enrolled=Number(x.enrolled||0);
+          const coverage=enrolled?Math.round(participants/enrolled*100):0;
+          const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1);
+          return '<tr><td><b>'+medal+'</b></td><td><b>'+esc(x.course||'Curso')+'</b><div style="font-size:11px;color:#64748b">'+esc(x.grade??'')+'° · '+esc(sourceNames[g.key])+'</div></td><td>'+num(participants)+' / '+num(enrolled)+'</td><td><div style="font-weight:800">'+(g.periodo?num(avg):pct(avg))+'</div><div style="height:6px;background:#e8eef5;border-radius:8px;overflow:hidden;margin-top:5px"><span style="display:block;height:100%;width:'+Math.max(0,Math.min(100,avg))+'%;background:linear-gradient(90deg,#2563eb,#06b6d4);border-radius:8px"></span></div></td><td>'+pct(coverage)+'</td><td><button class="aic-link" onclick="INST.toggle(\'rank:'+esc(g.key+':'+(x.course_id||x.course))+'\')">Ver estudiantes</button></td></tr>'+
+          (expanded.has('rank:'+g.key+':'+(x.course_id||x.course))?'<tr><td colspan="6"><div style="padding:8px 12px;background:#f8fafc;border-radius:10px"><b>Mejores resultados del curso</b><ol style="margin:8px 0 0 20px">'+[...(x.students||[])].sort((a,b)=>Number(g.periodo?b.best_score:b.pct)-Number(g.periodo?a.best_score:a.pct)).slice(0,5).map(st=>'<li style="padding:3px 0">'+esc(st.student||'Estudiante')+' — <b>'+(g.periodo?num(st.best_score):pct(st.pct))+'</b></li>').join('')+'</ol></div></td></tr>':'');
+        }).join('');
+        return '<article class="aic-card" style="padding:16px;margin:12px 0"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><span class="aic-kicker">TABLA DE POSICIONES</span><h3 style="font-size:17px;font-weight:850;margin:4px 0">'+esc(g.title)+'</h3><p style="font-size:12px;color:#64748b">'+esc(sourceNames[g.key])+' · '+g.ranked.length+' cursos comparados</p></div><span class="aic-chip">'+(g.periodo?'Nota promedio / 100':'Porcentaje de aciertos')+'</span></div>'+
+        (top.length?'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:14px 0">'+top.map((x,i)=>'<div style="padding:12px;border-radius:14px;background:'+(i===0?'linear-gradient(135deg,#fff7d6,#fff)':'#f5f8fc')+';border:1px solid #e5edf5"><div style="font-size:22px">'+['🥇','🥈','🥉'][i]+'</div><b style="display:block;font-size:12px">'+esc(x.course||'Curso')+'</b><strong style="font-size:22px;color:#173b65">'+(g.periodo?num(x.average_score):pct(x.average_pct))+'</strong></div>').join('')+'</div>':'')+
+        '<div class="aic-table-wrap"><table><thead><tr><th>PUESTO</th><th>CURSO</th><th>PARTICIPANTES</th><th>RESULTADO</th><th>COBERTURA</th><th>DETALLE</th></tr></thead><tbody>'+rows+'</tbody></table></div></article>';
+      }).join(''):'<div class="aic-card aic-empty" style="padding:20px"><b>Aún no hay evaluaciones con resultados comparables</b><p>Cuando los estudiantes presenten una evaluación, se construirá el ranking automáticamente con los resultados reales.</p></div>')+
+      '<div style="font-size:12px;color:#64748b;padding:10px 2px">Criterio: orden descendente por promedio de nota en pruebas de periodo o porcentaje de aciertos en las demás fuentes. Cada evaluación se compara por separado; los cursos sin resultados no se incluyen. Para un ranking oficial de colegios Saber 11 se necesitará incorporar la base pública del ICFES.</div></section>';
+  }
   function competencySection(){
     if(filters.source!=='all'&&filters.source!=='competencies')return '';
     const rows=(Array.isArray(data?.competencies)?data.competencies:[]).filter(matches);
@@ -115,7 +150,8 @@
     const scope=data.scope?.role==='rector'?'Vista institucional · Rector':data.scope?.role==='coordinador'?'Vista institucional · Coordinador':'Vista de tus cursos · Docente';
     return '<div><section class="aic-hero"><div class="aic-hero-copy"><span class="aic-kicker">CENTRO DE EVALUACIÓN</span><h2>Informe institucional unificado</h2><p>Participación y resultados de las cinco fuentes de evaluación, sin mezclar sus escalas.</p><div class="aic-hero-actions"><button onclick="INST.load()">↻ Actualizar informe</button><button class="ghost" onclick="INST.csv()">↓ Exportar CSV</button></div></div><div class="aic-hero-art"><div class="aic-orbit orbit1"></div><div class="aic-orbit orbit2"></div><div class="aic-book">📊</div><div class="aic-cap">🎓</div></div></section>'+
       '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:12px 0"><span class="aic-chip">'+scope+'</span><span style="font-size:12px;color:#64748b">Actualizado: '+date(data.generated_at)+'</span></div>'+
-      '<section class="aic-kpis">'+counts.map(c=>'<article class="aic-kpi"><div class="aic-kpi-icon blue">'+c[2]+'</div><div><small>'+c[0]+'</small><strong>'+num(c[1])+'</strong><span>Registros curso-evaluación</span></div></article>').join('')+'</section>'+filterBar()+
+      '<section class="aic-kpis">'+counts.map(c=>'<article class="aic-kpi"><div class="aic-kpi-icon blue">'+c[2]+'</div><div><small>'+c[0]+'</small><strong>'+num(c[1])+'</strong><span>Registros curso-evaluación</span></div></article>').join('')+'</section>'+filterBar()+rankingSection()+
+      
       '<div class="aic-card" style="padding:14px;margin-top:12px;font-size:12px;color:#64748b">Las pruebas de periodo conservan su nota de 0 a 100. Saber 11 en línea, impresos y diagnósticos muestran porcentaje de respuestas correctas. Los porcentajes no se convierten en puntajes oficiales ICFES. Los cursos sin estudiantes o sin entregas no generan resultados ficticios.</div>'+
       section('periodo','Pruebas de periodo','Notas, participación, intentos y seguimiento por estudiante · escala 0–100')+
       section('saber_online','Simulacros Saber 11 en línea','Participación y porcentaje de respuestas correctas por estudiante')+
