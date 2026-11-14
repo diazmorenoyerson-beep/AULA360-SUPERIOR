@@ -179,7 +179,11 @@ def main():
         parser.error("Define SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en el entorno.")
     if not args.file.is_file():
         parser.error(f"No existe el archivo: {args.file}")
-    checksum = hashlib.sha256(args.file.read_bytes()).hexdigest()
+    hasher = hashlib.sha256()
+    with args.file.open("rb") as source_file:
+        for chunk in iter(lambda: source_file.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    checksum = hasher.hexdigest()
     metadata = {
         "source_name": args.source_name, "source_url": args.source_url,
         "application": args.application, "published_at": args.published_at,
