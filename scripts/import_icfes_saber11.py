@@ -17,6 +17,7 @@ import argparse
 import csv
 import hashlib
 import json
+import math
 import os
 import re
 import sys
@@ -73,6 +74,8 @@ def number(value: object, field: str, low: float | None = None, high: float | No
         else:
             value = value.replace(",", "")
     n = float(value)
+    if not math.isfinite(n):
+        raise ValueError(f"{field} debe ser un número finito: {value}")
     if low is not None and n < low or high is not None and n > high:
         raise ValueError(f"{field} fuera de rango: {value}")
     return n
