@@ -95,7 +95,7 @@
       });
     });
     const groups=[...byTest.values()].filter(g=>g.rows.length).map(g=>{
-      const periodo=g.key==='periodo';
+      const periodo=g.key.startsWith('periodo:');
       const ranked=[...g.rows].sort((a,b)=>Number(periodo?b.average_score:b.average_pct)-Number(periodo?a.average_score:a.average_pct));
       return {...g,ranked,periodo};
     });
