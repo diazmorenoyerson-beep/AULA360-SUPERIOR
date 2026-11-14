@@ -367,7 +367,7 @@ async function go(t){
   leaveChat();tab=t;
   try{
     if(t==='saber'){await loadScript('saber.js?v=2');await SABER.load()}
-    if(t==='institucional'){await loadScript('institucional.js?v=6');await INST.load()}
+    if(t==='institucional'){await loadScript('institucional.js?v=7');await INST.load()}
     if(t==='clase'&&M.role==='prof'){await loadScript('aulavirtual.js?v=3')}
     if(t==='aclase'||t==='asistencias'){await loadScript('claseasis.js?v=7');await ACL.load()}
     if(t==='planeador'||t==='diario'){await loadScript('planeador.js?v=3');await PLN.load()}
@@ -1068,6 +1068,6 @@ function render(){
 }
 if(sb)boot();else toast('⚠️','No se pudo conectar','No se cargó el servicio de acceso. Recarga la página o revisa tu conexión.');
 </script>
-<script src="dashboard.js?v=16"></script>
+<script src="dashboard.js?v=17"></script>
 <script>if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body></html>
