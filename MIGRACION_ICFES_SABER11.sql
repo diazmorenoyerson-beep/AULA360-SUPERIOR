@@ -41,7 +41,7 @@ create table if not exists public.icfes_saber11_results (
   classification text,
   source_row jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
-  constraint icfes_saber11_result_unique unique
+  constraint icfes_saber11_result_unique unique nulls not distinct
     (application,institution_code,academic_calendar,sector,jornada)
 );
 create index if not exists icfes_saber11_results_app_dept_idx
