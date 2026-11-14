@@ -258,14 +258,17 @@ def main():
                 f"Revisar import_id={import_id} en Supabase."
             ) from exc
 
-        if status == "published":
+        if status not in ("staged", "validated", "failed"):
             print(
-                f"ADVERTENCIA: Supabase confirma que el lote {import_id} está publicado; "
-                "no se borraron sus resultados.", file=sys.stderr
+                f"ADVERTENCIA: estado inesperado o inexistente ({status!r}) para el lote "
+                f"{import_id}; no se borraron resultados.", file=sys.stderr
             )
-            raise
+            raise RuntimeError(
+                f"{exc}. Estado inesperado del lote; no se ejecutó limpieza automática. "
+                f"Revisar import_id={import_id} en Supabase."
+            ) from exc
 
-        # Solo limpia cuando Supabase confirma que el lote NO está publicado.
+        # Solo limpia cuando Supabase confirma staged/validated/failed.
         try:
             request(
                 f"{base}/rest/v1/icfes_saber11_results?import_id=eq.{quote(import_id)}",
