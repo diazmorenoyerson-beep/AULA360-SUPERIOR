@@ -142,6 +142,8 @@ def transform(row: dict, application: str, source_row: bool):
     }
     for field, aliases in AREA_FIELDS.items():
         out[field] = number(pick(row, aliases), field, 0, 100)
+        if out[field] is None:
+            raise ValueError(f"Falta el promedio obligatorio del área: {field}")
     for field, aliases in SD_ALIASES.items():
         out[field] = number(pick(row, aliases), field, 0, 100)
     if source_row:
