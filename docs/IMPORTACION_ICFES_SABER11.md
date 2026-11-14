@@ -12,6 +12,14 @@ Este proceso administrativo carga agregados por institución desde un archivo of
 - El proceso crea un lote en estado `staged`, inserta por lotes de 250, y solo lo marca
   `published` al terminar toda la carga. Ante error lo marca `failed`.
 - No ejecutar simultáneamente dos cargas para la misma aplicación.
+- El importador rechaza una aplicación que ya tenga un lote publicado; no sobrescribe
+  resultados existentes. Una corrección de un periodo publicado requiere un procedimiento
+  de reemplazo/versionado revisado por un administrador.
+- Rechaza claves institucionales duplicadas dentro del archivo según institución,
+  calendario, sector y jornada.
+- Si falla una carga, intenta eliminar las filas parciales de ese lote y lo marca
+  `failed`. Si la limpieza falla, muestra una advertencia que debe resolverse antes
+  de reintentar.
 - Verificar primero que los encabezados del archivo correspondan a los alias admitidos.
   Si el ICFES cambia los nombres de columnas, ampliar el mapa del script antes de cargar.
 
@@ -46,10 +54,15 @@ Parámetros opcionales: `--sheet "NombreHoja"`, `--source-url URL`,
   promediando las cinco áreas.
 - Los encabezados de la fuente se normalizan quitando tildes, espacios y signos.
 
-## Limitación conocida
+## Control de duplicados del esquema
 
-El esquema actual tiene una restricción UNIQUE con columnas opcionales que pueden ser NULL;
-PostgreSQL permite filas aparentemente duplicadas cuando alguna de esas columnas es NULL.
-Antes de una carga histórica completa debe aplicarse una clave de deduplicación que use
-`NULLS NOT DISTINCT` o índices únicos con `COALESCE`, tras confirmar la granularidad real
-del archivo (institución/calendario/sector/jornada).
+La restricción de la tabla usa `UNIQUE NULLS NOT DISTINCT` sobre aplicación,
+institución, calendario, sector y jornada. Esto evita que valores NULL permitan
+duplicados silenciosos. El importador también rechaza duplicados dentro del archivo
+y bloquea la publicación repetida de una aplicación ya publicada.
+
+## Pendiente antes de una carga real
+
+Confirmar con el diccionario y los encabezados del archivo ICFES que la granularidad
+real sea institución/calendario/sector/jornada. Si el archivo incluye otra dimensión
+que diferencie legítimamente registros, debe incorporarse a la clave antes de importar.
