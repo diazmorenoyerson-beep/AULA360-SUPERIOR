@@ -23,6 +23,7 @@ import sys
 import unicodedata
 import urllib.error
 import urllib.request
+from urllib.parse import urlencode, quote
 from datetime import date, datetime
 from pathlib import Path
 from typing import Iterable
@@ -184,6 +185,14 @@ def main():
         for chunk in iter(lambda: source_file.read(1024 * 1024), b""):
             hasher.update(chunk)
     checksum = hasher.hexdigest()
+    # Evita publicar dos veces la misma aplicación.
+    query = urlencode({"application": f"eq.{args.application}", "status": "eq.published", "select": "id,checksum"})
+    _, published = request(f"{base}/rest/v1/icfes_saber11_imports?{query}", key, "GET")
+    if published:
+        raise RuntimeError(
+            f"Ya existe una importación publicada para {args.application} "
+            f"(id={published[0]['id']}). No se sobrescribe automáticamente."
+        )
     metadata = {
         "source_name": args.source_name, "source_url": args.source_url,
         "application": args.application, "published_at": args.published_at,
@@ -193,9 +202,18 @@ def main():
     import_id = created[0]["id"]
     total = 0
     batch = []
+    seen_keys = set()
     try:
         for raw in rows_from_file(args.file, args.sheet):
             item = transform(raw, args.application, args.include_source_row)
+            # Granularidad: institución + calendario + sector + jornada.
+            dedupe_key = (
+                item["application"], item["institution_code"],
+                item["academic_calendar"], item["sector"], item["jornada"]
+            )
+            if dedupe_key in seen_keys:
+                raise ValueError(f"Fila duplicada para clave institucional: {dedupe_key}")
+            seen_keys.add(dedupe_key)
             item["import_id"] = import_id
             batch.append(item)
             if len(batch) >= BATCH_SIZE:
@@ -215,8 +233,16 @@ def main():
                 {"status": "published"}, "return=minimal")
         print(f"Importación publicada. id={import_id}; filas={total}; sha256={checksum}")
     except Exception as exc:
+        # Limpia filas parciales para permitir corregir y reintentar la carga.
+        try:
+            request(
+                f"{base}/rest/v1/icfes_saber11_results?import_id=eq.{quote(import_id)}",
+                key, "DELETE", None, "return=minimal"
+            )
+        except Exception as cleanup_error:
+            print(f"ADVERTENCIA: no se pudieron limpiar filas parciales: {cleanup_error}", file=sys.stderr)
         request(f"{base}/rest/v1/icfes_saber11_imports?id=eq.{import_id}", key, "PATCH",
-                {"rows_loaded": total, "status": "failed", "notes": str(exc)[:1500]}, "return=minimal")
+                {"rows_loaded": 0, "status": "failed", "notes": str(exc)[:1500]}, "return=minimal")
         raise
 
 if __name__ == "__main__":
