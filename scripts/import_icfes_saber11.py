@@ -238,7 +238,34 @@ def main():
                 {"status": "published"}, "return=minimal")
         print(f"Importación publicada. id={import_id}; filas={total}; sha256={checksum}")
     except Exception as exc:
-        # Limpia filas parciales para permitir corregir y reintentar la carga.
+        # Si la respuesta del PATCH de publicación se perdió, primero consulta
+        # el estado real. Nunca borres resultados que quizá ya estén publicados.
+        status = None
+        try:
+            status_query = urlencode({"id": f"eq.{import_id}", "select": "status"})
+            _, current = request(
+                f"{base}/rest/v1/icfes_saber11_imports?{status_query}", key, "GET"
+            )
+            status = current[0]["status"] if current else None
+        except Exception as status_error:
+            print(
+                f"ADVERTENCIA: no se pudo confirmar el estado del lote ({status_error}). "
+                "Se conservan los datos para evitar borrar una publicación posiblemente exitosa.",
+                file=sys.stderr,
+            )
+            raise RuntimeError(
+                f"{exc}. Estado del lote no verificable; no se ejecutó limpieza automática. "
+                f"Revisar import_id={import_id} en Supabase."
+            ) from exc
+
+        if status == "published":
+            print(
+                f"ADVERTENCIA: Supabase confirma que el lote {import_id} está publicado; "
+                "no se borraron sus resultados.", file=sys.stderr
+            )
+            raise
+
+        # Solo limpia cuando Supabase confirma que el lote NO está publicado.
         try:
             request(
                 f"{base}/rest/v1/icfes_saber11_results?import_id=eq.{quote(import_id)}",
