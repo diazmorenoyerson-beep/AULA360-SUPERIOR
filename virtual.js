@@ -35,14 +35,24 @@ async function crear(){
   if(r.error)return err(r.error);
   const id=r.data.id;
   const c=await sb.from('virtual_trabajo_cursos').insert(f.cursos.map(x=>({trabajo_id:id,course_id:x})));
-  if(c.error)return err(c.error);
+  if(c.error){await sb.from('virtual_trabajos').delete().eq('id',id);return err(c.error)}
+  const uploaded=[];
   for(const file of f.files){
     const nombre=file.name.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_');
     const path=M.id+'/'+id+'/'+Date.now()+'_'+nombre;
+    uploaded.push(path);
     const up=await sb.storage.from('virtual-material').upload(path,file,{upsert:false});
-    if(up.error){toast('⚠️','No se subió '+file.name,up.error.message);continue}
+    if(up.error){
+      await sb.storage.from('virtual-material').remove(uploaded);
+      await sb.from('virtual_trabajos').delete().eq('id',id);
+      return err(up.error);
+    }
     const a=await sb.from('virtual_archivos').insert({trabajo_id:id,path,nombre:file.name,tipo:(file.name.split('.').pop()||'').toLowerCase(),size:file.size});
-    if(a.error)toast('⚠️','No se registró '+file.name,a.error.message);
+    if(a.error){
+      await sb.storage.from('virtual-material').remove(uploaded);
+      await sb.from('virtual_trabajos').delete().eq('id',id);
+      return err(a.error);
+    }
   }
   toast('✅','Publicado',f.titulo);Z.f=nuevo();await load();R();
 }
@@ -131,11 +141,12 @@ const api={
   async activo(id,on){const r=await sb.from('virtual_trabajos').update({activo:on}).eq('id',id);if(r.error)return err(r.error);await load();R()},
   async borrar(id){
     if(!confirm('¿Borrar este material o trabajo con sus archivos y entregas?'))return;
-    const t=Z.lista.find(x=>x.id===id);
     const a=await sb.from('virtual_archivos').select('path').eq('trabajo_id',id);
-    if(a.data&&a.data.length)await sb.storage.from('virtual-material').remove(a.data.map(x=>x.path));
+    if(a.error)return err(a.error);
+    if(a.data&&a.data.length){const rm=await sb.storage.from('virtual-material').remove(a.data.map(x=>x.path));if(rm.error)return err(rm.error)}
     const en=await sb.from('virtual_entregas').select('path').eq('trabajo_id',id);
-    if(en.data&&en.data.length)await sb.storage.from('virtual-entregas').remove(en.data.map(x=>x.path));
+    if(en.error)return err(en.error);
+    if(en.data&&en.data.length){const rm=await sb.storage.from('virtual-entregas').remove(en.data.map(x=>x.path));if(rm.error)return err(rm.error)}
     const r=await sb.from('virtual_trabajos').delete().eq('id',id);if(r.error)return err(r.error);
     await load();R();
   },
@@ -147,9 +158,18 @@ const api={
     const p=await sb.rpc('virtual_pedir_entrega',{p_trabajo:tid,p_nombre:file.name,p_size:file.size});
     if(p.error)return err(p.error);
     const up=await sb.storage.from('virtual-entregas').upload(p.data.path,file,{upsert:false});
-    if(up.error){await sb.rpc('virtual_cancelar_entrega',{p_entrega:p.data.entrega_id});return err(up.error)}
+    if(up.error){
+      await sb.storage.from('virtual-entregas').remove([p.data.path]);
+      await sb.rpc('virtual_cancelar_entrega',{p_entrega:p.data.entrega_id});
+      return err(up.error);
+    }
     const c=await sb.rpc('virtual_confirmar_entrega',{p_entrega:p.data.entrega_id,p_comentario:com||null});
-    if(c.error){await sb.rpc('virtual_cancelar_entrega',{p_entrega:p.data.entrega_id});return err(c.error)}
+    if(c.error){
+      const rm=await sb.storage.from('virtual-entregas').remove([p.data.path]);
+      await sb.rpc('virtual_cancelar_entrega',{p_entrega:p.data.entrega_id});
+      if(rm.error)toast('⚠️','No se pudo limpiar el archivo temporal',rm.error.message);
+      return err(c.error);
+    }
     toast('✅','Entrega enviada',file.name);await load();R();
   }
 };

@@ -181,6 +181,8 @@ async function calSave(){
   for(const it of C.items){
     if(it.status!=='ok'){invalid.push(it.name+': '+(it.err||'no se pudo procesar'));continue}
     if(!it.st){invalid.push(it.name+': no se identificó un estudiante');continue}
+    const lectura=evalIt(it);
+    if(lectura.rev>0){invalid.push(it.name+': '+lectura.rev+' marca(s) dudosa(s) requieren revisión; vuelve a escanear la hoja con mayor nitidez. No se calificará como blanco automáticamente.');continue}
     const docRead=calNormDoc(it.read&&it.read.doc),docRoster=calNormDoc(it.st.document);
     if(!it.read||it.read.ver!==expected){invalid.push(it.name+': versión no confirmada o distinta');continue}
     if(!docRead||!docRoster||docRead!==docRoster){invalid.push(it.name+': documento leído no coincide con el estudiante asignado');continue}
@@ -203,20 +205,22 @@ async function resultados(forzar){
 }
 function agrupar(){
   const por={};
-  (Z.res||[]).forEach(r=>{const o=por[r.roster_id]=por[r.roster_id]||{name:r.name,doc:r.document,course:r.course,areas:{},grados:{},k:0};o.k++;
+  (Z.res||[]).forEach(r=>{const o=por[r.roster_id]=por[r.roster_id]||{name:r.name,doc:r.document,course:r.course,areas:{},grados:{},competencias:{},k:0};o.k++;
     Object.entries(r.por_area||{}).forEach(([a,v])=>{const x=o.areas[a]=o.areas[a]||{c:0,t:0};x.c+=v.c;x.t+=v.t});
-    Object.entries(r.por_grado||{}).forEach(([g,v])=>{const x=o.grados[g]=o.grados[g]||{c:0,t:0};x.c+=v.c;x.t+=v.t})});
+    Object.entries(r.por_grado||{}).forEach(([g,v])=>{const x=o.grados[g]=o.grados[g]||{c:0,t:0};x.c+=v.c;x.t+=v.t});
+    Object.entries(r.por_competencia||{}).forEach(([k,v])=>{const x=o.competencias[k]=o.competencias[k]||{c:0,t:0};x.c+=v.c;x.t+=v.t})});
   return Object.values(por).sort((a,b)=>String(a.course).localeCompare(b.course)||String(a.name).localeCompare(b.name,'es'));
 }
 function csv(){
   const dg=Z.cont.imp.kind==='diagnostico',f=agrupar();
-  const head=['Estudiante','Documento','Curso',...colsDe(f).map(a=>a+' %'),dg?'Total %':'Global estimado (0-500)'];
-  const rows=[head].concat(f.map(x=>{const tot=Object.values(x.areas).reduce((s,v)=>({c:s.c+v.c,t:s.t+v.t}),{c:0,t:0});return[x.name,x.doc||'',x.course,...colsDe(f).map(a=>x.areas[a]?pc(x.areas[a].c,x.areas[a].t):''),dg?pc(tot.c,tot.t):global(x.areas)??'']}));
+  const comps=[...new Set(f.flatMap(x=>Object.keys(x.competencias||{})))].sort((a,b)=>a.localeCompare(b,'es'));
+  const head=['Estudiante','Documento','Curso',...colsDe(f).map(a=>a+' %'),...comps.map(c=>'Competencia: '+c+' %'),dg?'Total %':'Global estimado (0-500)'];
+  const rows=[head].concat(f.map(x=>{const tot=Object.values(x.areas).reduce((s,v)=>({c:s.c+v.c,t:s.t+v.t}),{c:0,t:0});return[x.name,x.doc||'',x.course,...colsDe(f).map(a=>x.areas[a]?pc(x.areas[a].c,x.areas[a].t):''),...comps.map(c=>x.competencias[c]?.t?pc(x.competencias[c].c,x.competencias[c].t):''),dg?pc(tot.c,tot.t):global(x.areas)??'']}));
   const t='﻿'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv;charset=utf-8'}));a.download='resultados_'+(Z.cont.imp.codigo||'')+'.csv';a.click();
 }
 /* ---------- vistas ---------- */
-const B=(c,t)=>`style="padding:9px 14px;border-radius:10px;border:0;font-weight:700;cursor:pointer;background:${c};color:${c==='#e2e8f0'?'#0f172a':'#fff'}">${t}`;
+const B=(c,t)=>`class="aic-btn-3d" style="padding:9px 14px;border-radius:10px;border:0;font-weight:700;cursor:pointer;background:${c};color:${c==='#e2e8f0'?'#0f172a':'#fff'}">${t}`;
 function cursosBox(sel,fn,solo11){
   const cs=Z.cursos.filter(c=>!solo11||true);
   return cs.map(c=>`<label style="display:inline-flex;gap:4px;margin:2px 10px 2px 0;font-size:13px"><input type="checkbox" ${sel.includes(c.id)?'checked':''} onchange="SIMP.${fn}('${c.id}',this.checked)">${c.grade}° ${e(c.name)}</label>`).join('')||'<span style="font-size:13px;color:#64748b">No hay cursos.</span>';
@@ -260,7 +264,7 @@ function detalle(){
   <div><b>1. Cuadernillos</b> <span style="font-size:12px;color:#64748b">(${cus.map(x=>cnt(x)).reduce((a,b)=>a+b,0)} preguntas en total)</span>
    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">${cus.map(cu=>`<div style="border:1px solid #e2e8f0;border-radius:12px;padding:10px"><div style="font-weight:700">${dg?'Diagnóstico':CUADS[cu]}</div><div style="font-size:12px;color:#64748b;margin-bottom:6px">${cnt(cu)} preguntas · ${[...new Set(itemsDe(cu).map(q=>q.area))].map(a=>CORTA[a]||a).join(', ')}</div><button class="aic-link" onclick="SIMP.ver(${cu})">👁 Vista previa</button> <button class="aic-link" onclick="SIMP.impC(${cu})">🖨️ Imprimir</button></div>`).join('')}
    </div><div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap"><button class="aic-link" onclick="SIMP.impTodos()">🖨️ Imprimir todos los cuadernillos</button><button class="aic-link" onclick="SIMP.claves()">🔑 Imprimir claves (solo docente)</button></div>
-   ${imp.completo?'':'<p style="font-size:12px;color:#b45309;margin-top:6px">⚠️ El banco no alcanzó para todas las preguntas pedidas; este simulacro quedó parcial.</p>'}</div>
+   ${imp.completo?'':'<p style="font-size:12px;color:#b45309;margin-top:6px">⚠️ Este registro tiene cobertura incompleta y no debe interpretarse como una prueba completa. Los nuevos diagnósticos y simulacros ahora rechazan la creación cuando faltan preguntas válidas en el banco.</p>'}</div>
   <div><b>2. Hojas de respuestas con los datos de cada estudiante</b> <span style="font-size:12px;color:#64748b">(${Z.est.length} estudiantes${sinDoc?` · <span style="color:#b91c1c">${sinDoc} sin número de documento: no se podrán calificar por foto</span>`:''})</span>
    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px">
     <select id="si_hc" style="border:1px solid #cbd5e1;border-radius:8px;padding:7px"><option value="all">Todas las hojas${dg?'':' (A, B y C)'}</option>${cus.map(cu=>`<option value="${cu}">${dg?'Diagnóstico':CUADS[cu]}</option>`).join('')}</select>
@@ -289,14 +293,33 @@ function calHtml(){
 function resHtml(){
   if(!Z.res)return'';
   if(!Z.res.length)return'<p style="font-size:13px;color:#64748b;margin-top:6px">Todavía no hay hojas calificadas.</p>';
-  const dg=Z.cont.imp.kind==='diagnostico',f=agrupar(),prom=a=>{const v=f.filter(x=>x.areas[a]&&x.areas[a].t).map(x=>pc(x.areas[a].c,x.areas[a].t));return v.length?Math.round(v.reduce((s,y)=>s+y,0)/v.length):'—'};
+  const dg=Z.cont.imp.kind==='diagnostico',f=agrupar(),areas=colsDe(f);
+  const prom=a=>{const xs=f.filter(x=>x.areas[a]&&x.areas[a].t);if(!xs.length)return'—';const c=xs.reduce((s,x)=>s+x.areas[a].c,0),t=xs.reduce((s,x)=>s+x.areas[a].t,0);return pc(c,t)};
+  const cursos={};f.forEach(x=>{const k=x.course||'Curso sin nombre',o=cursos[k]=cursos[k]||{n:0,areas:{}};o.n++;Object.entries(x.areas).forEach(([a,v])=>{const z=o.areas[a]=o.areas[a]||{c:0,t:0};z.c+=v.c;z.t+=v.t})});
+  const cursoRows=Object.entries(cursos).sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([nombre,o])=>{const total=Object.values(o.areas).reduce((s,v)=>({c:s.c+v.c,t:s.t+v.t}),{c:0,t:0});return'<tr><td><b>'+e(nombre)+'</b></td><td>'+o.n+'</td>'+areas.map(a=>'<td>'+(o.areas[a]&&o.areas[a].t?pc(o.areas[a].c,o.areas[a].t)+'%':'—')+'</td>').join('')+'<td><b>'+(dg?(total.t?pc(total.c,total.t)+'%':'—'):(global(o.areas)??'—'))+'</b></td></tr>'}).join('');
+  const pooled={};areas.forEach(a=>{const xs=f.filter(x=>x.areas[a]&&x.areas[a].t);const c=xs.reduce((s,x)=>s+x.areas[a].c,0),t=xs.reduce((s,x)=>s+x.areas[a].t,0);if(t)pooled[a]={c,t,p:pc(c,t)}});
+  const totEst=x=>Object.values(x.areas).reduce((s,v)=>({c:s.c+v.c,t:s.t+v.t}),{c:0,t:0});
+  const riesgos=dg?f.map(x=>({...x,total:totEst(x)})).filter(x=>x.total.t&&pc(x.total.c,x.total.t)<50).sort((a,b)=>pc(a.total.c,a.total.t)-pc(b.total.c,b.total.t)):[];
+  const totalGrupo=dg?f.reduce((s,x)=>{const t=totEst(x);return{c:s.c+t.c,t:s.t+t.t}},{c:0,t:0}):null;
+  const areasPrioridad=Object.entries(pooled).sort((a,b)=>a[1].p-b[1].p);
+  const nivel=p=>p<50?['Prioridad alta','#fee2e2','#991b1b']:p<70?['Requiere refuerzo','#fef3c7','#92400e']:['Desempeño favorable','#dcfce7','#166534'];
+  const analisis='<div style="margin-top:12px;border:1px solid #cbd5e1;border-radius:12px;padding:12px;background:#f8fafc"><b style="font-size:14px">Lectura pedagógica de resultados</b><p style="font-size:12px;color:#64748b;margin:3px 0 8px">'+(dg?'Los rangos son señales orientativas para priorizar refuerzos; no equivalen a una escala oficial.':'Los porcentajes por área ayudan a orientar refuerzos. El puntaje global estimado no es un resultado oficial ICFES.')+'</p>'+
+    (dg?'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"><div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px"><small>Estudiantes evaluados</small><br><b style="font-size:20px">'+f.length+'</b></div><div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px"><small>Dominio ponderado del grupo</small><br><b style="font-size:20px">'+(totalGrupo.t?pc(totalGrupo.c,totalGrupo.t)+'%':'—')+'</b></div><div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px"><small>Estudiantes para apoyo prioritario</small><br><b style="font-size:20px;color:'+(riesgos.length?'#b91c1c':'#166534')+'">'+riesgos.length+'</b></div></div>':'')+
+    '<b style="font-size:12px">Prioridad por área</b><div class="aic-table-wrap"><table><thead><tr><th>Área</th><th>Dominio ponderado</th><th>Orientación</th></tr></thead><tbody>'+areasPrioridad.map(([a,v])=>{const n=nivel(v.p);return'<tr><td>'+e(a)+'</td><td><b>'+v.p+'%</b></td><td><span style="background:'+n[1]+';color:'+n[2]+';padding:3px 7px;border-radius:99px;font-size:11px;font-weight:700">'+n[0]+'</span></td></tr>'}).join('')+'</tbody></table></div>'+
+    (dg?'<div style="margin-top:9px"><b style="font-size:12px">Estudiantes que requieren acompañamiento prioritario</b>'+(riesgos.length?'<div class="aic-table-wrap"><table><thead><tr><th>Estudiante</th><th>Curso</th><th>Dominio</th></tr></thead><tbody>'+riesgos.slice(0,12).map(x=>'<tr><td>'+e(x.name)+'</td><td>'+e(x.course)+'</td><td><b>'+pc(x.total.c,x.total.t)+'%</b></td></tr>').join('')+'</tbody></table></div>'+(riesgos.length>12?'<p style="font-size:11px;color:#64748b">Se muestran los primeros 12; el CSV contiene el listado completo.</p>':''):'<p style="font-size:12px;color:#166534">No se identifican estudiantes por debajo del umbral orientativo del 50%.</p>')+'</div>':'')+
+    '</div>';
+  const competenciaTotales={};f.forEach(x=>Object.entries(x.competencias||{}).forEach(([k,v])=>{const o=competenciaTotales[k]=competenciaTotales[k]||{c:0,t:0};o.c+=v.c;o.t+=v.t}));
+  const competenciaHtml=Object.keys(competenciaTotales).length
+    ? '<div style="margin-top:12px"><b style="font-size:13px">Análisis por competencia</b><p style="font-size:12px;color:#64748b;margin:3px 0 7px">Solo incluye preguntas que tienen competencia registrada en el banco.</p><div class="aic-table-wrap"><table><thead><tr><th>COMPETENCIA</th><th>ACIERTOS</th><th>PREGUNTAS</th><th>DOMINIO</th><th>ORIENTACIÓN</th></tr></thead><tbody>'+Object.entries(competenciaTotales).sort((a,b)=>pc(a[1].c,a[1].t)-pc(b[1].c,b[1].t)).map(([k,v])=>{const p=pc(v.c,v.t),n=nivel(p);return '<tr><td><b>'+e(k)+'</b></td><td>'+v.c+'</td><td>'+v.t+'</td><td><b>'+p+'%</b></td><td><span style="background:'+n[1]+';color:'+n[2]+';padding:3px 7px;border-radius:99px;font-size:11px;font-weight:700">'+n[0]+'</span></td></tr>'}).join('')+'</tbody></table></div></div>'
+    : '<div style="margin-top:12px;padding:10px;border:1px dashed #cbd5e1;border-radius:10px;font-size:12px;color:#64748b"><b>Análisis por competencia pendiente de clasificación.</b> El banco todavía no tiene preguntas con competencia registrada; al clasificar preguntas, el informe mostrará este desglose automáticamente.</div>';
   let gr='';
   if(dg){const g={};f.forEach(x=>Object.entries(x.grados).forEach(([k,v])=>{const o=g[k]=g[k]||{c:0,t:0};o.c+=v.c;o.t+=v.t}));
-    gr=`<div style="margin-top:10px"><b style="font-size:13px">Dominio por grado anterior (grupo completo)</b><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">${Object.keys(g).sort((a,b)=>a-b).map(k=>{const p=pc(g[k].c,g[k].t);return`<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 10px;font-size:13px;background:${p<50?'#fff1f2':p<70?'#fffbeb':'#ecfdf5'}">Grado ${k}.°<br><b>${p}%</b></div>`}).join('')}</div><p style="font-size:12px;color:#64748b">Los grados en rojo son los temas que el grupo debe reforzar.</p></div>`}
-  return`<div class="aic-table-wrap" style="margin-top:8px"><table><thead><tr><th>ESTUDIANTE</th><th>CURSO</th>${colsDe(f).map(a=>`<th>${CORTA[a]||a}</th>`).join('')}<th>${dg?'TOTAL':'GLOBAL EST.'}</th></tr></thead><tbody>
-   ${f.map(x=>{const tot=Object.values(x.areas).reduce((s,v)=>({c:s.c+v.c,t:s.t+v.t}),{c:0,t:0});return`<tr><td><b>${e(x.name)}</b></td><td>${e(x.course)}</td>${colsDe(f).map(a=>`<td>${x.areas[a]&&x.areas[a].t?pc(x.areas[a].c,x.areas[a].t)+'%':'—'}</td>`).join('')}<td><b>${dg?pc(tot.c,tot.t)+'%':(global(x.areas)??'—')}</b></td></tr>`}).join('')}
-   <tr style="background:#f1f5fb"><td colspan="2"><b>Promedio del grupo</b></td>${colsDe(f).map(a=>`<td><b>${prom(a)}${prom(a)==='—'?'':'%'}</b></td>`).join('')}<td></td></tr></tbody></table></div>
-   ${dg?'':'<p style="font-size:12px;color:#64748b">Global estimado (0-500) con la ponderación del ICFES. Si falta una sección, el estimado se calcula con las áreas calificadas; el puntaje oficial se calcula con otro método.</p>'}${gr}`;
+    gr='<div style="margin-top:10px"><b style="font-size:13px">Dominio por grado anterior (grupo completo)</b><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">'+Object.keys(g).sort((a,b)=>a-b).map(k=>{const p=pc(g[k].c,g[k].t);return'<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 10px;font-size:13px;background:'+(p<50?'#fff1f2':p<70?'#fffbeb':'#ecfdf5')+'">Grado '+k+'.°<br><b>'+p+'%</b></div>'}).join('')+'</div><p style="font-size:12px;color:#64748b">Los grados en rojo son los temas que el grupo debe reforzar.</p></div>'}
+  return'<div style="margin-top:10px"><b style="font-size:13px">Comparativo por curso</b><div class="aic-table-wrap"><table><thead><tr><th>CURSO</th><th>EST.</th>'+areas.map(a=>'<th>'+e(CORTA[a]||a)+'</th>').join('')+'<th>'+(dg?'TOTAL':'GLOBAL EST.')+'</th></tr></thead><tbody>'+cursoRows+'</tbody></table></div></div>'+analisis+competenciaHtml+
+  '<div class="aic-table-wrap" style="margin-top:10px"><b style="font-size:13px">Resultados por estudiante</b><table><thead><tr><th>ESTUDIANTE</th><th>CURSO</th>'+areas.map(a=>'<th>'+e(CORTA[a]||a)+'</th>').join('')+'<th>'+(dg?'TOTAL':'GLOBAL EST.')+'</th></tr></thead><tbody>'+
+   f.map(x=>{const tot=Object.values(x.areas).reduce((s,v)=>({c:s.c+v.c,t:s.t+v.t}),{c:0,t:0});return'<tr><td><b>'+e(x.name)+'</b></td><td>'+e(x.course)+'</td>'+areas.map(a=>'<td>'+(x.areas[a]&&x.areas[a].t?pc(x.areas[a].c,x.areas[a].t)+'%':'—')+'</td>').join('')+'<td><b>'+(dg?(tot.t?pc(tot.c,tot.t)+'%':'—'):(global(x.areas)??'—'))+'</b></td></tr>'}).join('')+
+   '<tr style="background:#f1f5fb"><td colspan="2"><b>Promedio ponderado</b></td>'+areas.map(a=>'<td><b>'+prom(a)+(prom(a)==='—'?'':'%')+'</b></td>').join('')+'<td></td></tr></tbody></table></div>'+
+   (dg?'':'<p style="font-size:12px;color:#64748b">Global estimado (0-500) con ponderación por área. El comparativo por curso consolida las respuestas de sus estudiantes; el puntaje oficial del ICFES se calcula con otro método.</p>')+gr;
 }
 function lista(){
   const L=Z.lista.filter(x=>Z.mode==='diag'?x.kind==='diagnostico':x.kind==='saber');
